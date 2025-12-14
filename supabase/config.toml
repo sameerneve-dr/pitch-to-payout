@@ -1,5 +1,8 @@
 project_id = "znqgyjigzcasikxfysnf"
 
+[functions.generate-counter-response]
+verify_jwt = true
+
 [functions.generate-panel]
 verify_jwt = true
 
