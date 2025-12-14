@@ -63,12 +63,11 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
 
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
-    const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
 
-    // Require Flowglad configuration - no demo mode fallback
-    if (!FLOWGLAD_SECRET_KEY || !FLOWGLAD_PRICE_ID) {
-      console.error('Flowglad not configured. FLOWGLAD_SECRET_KEY:', !!FLOWGLAD_SECRET_KEY, 'FLOWGLAD_PRICE_ID:', !!FLOWGLAD_PRICE_ID);
-      throw new Error('Payment system not configured. Please set FLOWGLAD_SECRET_KEY and FLOWGLAD_PRICE_ID.');
+    // Require Flowglad configuration
+    if (!FLOWGLAD_SECRET_KEY) {
+      console.error('Flowglad not configured. FLOWGLAD_SECRET_KEY:', !!FLOWGLAD_SECRET_KEY);
+      throw new Error('Payment system not configured. Please set FLOWGLAD_SECRET_KEY.');
     }
 
     // Get the total investment amount from deal terms
@@ -88,7 +87,7 @@ serve(async (req) => {
       body: JSON.stringify({
         checkoutSession: {
           customerExternalId: user.id,
-          priceId: FLOWGLAD_PRICE_ID,
+          priceSlug: 'investor_panel_demo',
           quantity: 1,
           successUrl: `${origin}/success?deal_id=${dealId}`,
           cancelUrl: `${origin}/deal/${dealId}`,
