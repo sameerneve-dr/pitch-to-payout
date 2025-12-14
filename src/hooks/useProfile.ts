@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 export interface Profile {
   id: string;
   user_id: string;
+  name: string | null;
   plan: 'free' | 'plus' | 'pro';
   plan_status: 'active' | 'inactive';
   panels_today: number;

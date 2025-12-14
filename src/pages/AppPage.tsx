@@ -27,7 +27,7 @@ const AppPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const limits = getPlanLimits();
-  const userName = user?.user_metadata?.name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Founder';
+  const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Founder';
 
   // Show welcome toast for subscription success
   useEffect(() => {

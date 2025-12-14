@@ -192,6 +192,7 @@ export type Database = {
           deals_today: number
           id: string
           last_reset_date: string
+          name: string | null
           panels_today: number
           plan: string
           plan_status: string
@@ -203,6 +204,7 @@ export type Database = {
           deals_today?: number
           id?: string
           last_reset_date?: string
+          name?: string | null
           panels_today?: number
           plan?: string
           plan_status?: string
@@ -214,6 +216,7 @@ export type Database = {
           deals_today?: number
           id?: string
           last_reset_date?: string
+          name?: string | null
           panels_today?: number
           plan?: string
           plan_status?: string
