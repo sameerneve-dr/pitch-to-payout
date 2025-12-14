@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
 import { 
-  Zap, 
+  Waves, 
   Users, 
   DollarSign, 
   ArrowRight,
@@ -36,9 +36,9 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[var(--neon-primary)]">
-              <Zap className="w-5 h-5 text-primary-foreground" />
+              <Waves className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">Investor Panel</span>
+            <span className="text-xl font-bold text-foreground">SharkBank</span>
           </div>
           <nav className="flex items-center gap-4">
             {user && !user.is_anonymous ? (
@@ -68,7 +68,7 @@ const Index = () => {
           </h1>
           
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Investor Panel brings Shark Tank to your screen. Type your pitch, meet AI investors, 
+            SharkBank brings Shark Tank to your screen. Type your pitch, meet investors, 
             and close a deal in minutes—not months.
           </p>
 
@@ -104,7 +104,7 @@ const Index = () => {
             </div>
             <h3 className="text-xl font-semibold text-card-foreground mb-2">Real Investors</h3>
             <p className="text-muted-foreground">
-              3-5 AI personas with unique investment theses ask sharp questions about your startup.
+              3-5 personas with unique investment theses ask sharp questions about your startup.
             </p>
           </div>
           
@@ -151,7 +151,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
-          Investor Panel • Powered by AI
+          SharkBank • Dive Into Deals
         </div>
       </footer>
     </div>
