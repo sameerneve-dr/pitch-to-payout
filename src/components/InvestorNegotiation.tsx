@@ -1,19 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
 import { 
   DollarSign, 
   Percent, 
   User,
   Handshake,
-  TrendingUp,
-  Check,
-  X
+  TrendingUp
 } from 'lucide-react';
 
 export interface InvestorAllocation {
@@ -41,9 +38,14 @@ const InvestorNegotiation = ({
   onAllocationsChange 
 }: InvestorNegotiationProps) => {
   const [localAllocations, setLocalAllocations] = useState<InvestorAllocation[]>(allocations);
+  const initialized = useRef(false);
 
+  // Only initialize from props once
   useEffect(() => {
-    setLocalAllocations(allocations);
+    if (!initialized.current && allocations.length > 0) {
+      setLocalAllocations(allocations);
+      initialized.current = true;
+    }
   }, [allocations]);
 
   const includedAllocations = localAllocations.filter(a => a.isIncluded);
@@ -51,14 +53,24 @@ const InvestorNegotiation = ({
   const totalEquityGiven = includedAllocations.reduce((sum, a) => sum + a.equityShare, 0);
   const totalRoyalty = includedAllocations.reduce((sum, a) => sum + a.royaltyPercent, 0);
 
-  const handleAllocationChange = (index: number, field: keyof InvestorAllocation, value: number | boolean) => {
+  const handleToggleInvestor = (index: number, checked: boolean) => {
+    const updated = localAllocations.map((alloc, i) => {
+      if (i !== index) return alloc;
+      return { ...alloc, isIncluded: checked };
+    });
+    
+    setLocalAllocations(updated);
+    onAllocationsChange(updated);
+  };
+
+  const handleAllocationChange = (index: number, field: keyof InvestorAllocation, value: number) => {
     const updated = localAllocations.map((alloc, i) => {
       if (i !== index) return alloc;
       
       const newAlloc = { ...alloc, [field]: value };
       
       // Recalculate percentage of deal when amount changes
-      if (field === 'amount' && typeof value === 'number') {
+      if (field === 'amount') {
         newAlloc.percentageOfDeal = askAmount > 0 ? (value / askAmount) * 100 : 0;
       }
       
@@ -79,6 +91,9 @@ const InvestorNegotiation = ({
     return `$${value.toFixed(0)}`;
   };
 
+  // Max amount an investor can offer (2x the ask, or at least $1M)
+  const maxInvestment = Math.max(askAmount * 2, 1_000_000);
+
   return (
     <div className="space-y-4">
       <Card className="border-2 border-border">
@@ -86,10 +101,10 @@ const InvestorNegotiation = ({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Handshake className="w-5 h-5 text-primary" />
-              Negotiate with Investors
+              Choose Your Investors
             </CardTitle>
             <Badge variant="outline" className="text-xs">
-              Max 2 investors
+              {includedAllocations.length} selected
             </Badge>
           </div>
         </CardHeader>
@@ -99,12 +114,12 @@ const InvestorNegotiation = ({
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Total Invested</p>
               <p className="font-bold text-sm">{formatCurrency(totalInvested)}</p>
-              <p className="text-xs text-muted-foreground">of {formatCurrency(askAmount)}</p>
+              <p className="text-xs text-muted-foreground">ask: {formatCurrency(askAmount)}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Equity Given</p>
               <p className="font-bold text-sm">{totalEquityGiven.toFixed(1)}%</p>
-              <p className="text-xs text-muted-foreground">of {totalEquity}% offered</p>
+              <p className="text-xs text-muted-foreground">offered: {totalEquity}%</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Royalty</p>
@@ -118,38 +133,41 @@ const InvestorNegotiation = ({
       {localAllocations.map((alloc, index) => (
         <Card 
           key={index} 
-          className={`border transition-all ${
+          className={`border transition-all cursor-pointer ${
             alloc.isIncluded 
               ? 'border-primary/50 bg-gradient-to-br from-card to-primary/5' 
-              : 'border-border opacity-60'
+              : 'border-border hover:border-muted-foreground/50'
           }`}
         >
           <CardContent className="pt-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  alloc.isIncluded ? 'bg-primary/10' : 'bg-muted'
+                }`}>
+                  <User className={`w-5 h-5 ${alloc.isIncluded ? 'text-primary' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
                   <p className="font-semibold">{alloc.investor}</p>
                   <p className="text-xs text-muted-foreground">{alloc.role}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground">Include</Label>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="font-bold text-sm">{formatCurrency(alloc.amount)}</p>
+                  <p className="text-xs text-muted-foreground">{alloc.equityShare.toFixed(1)}% equity</p>
+                </div>
                 <Switch
                   checked={alloc.isIncluded}
-                  onCheckedChange={(checked) => {
-                    // Check if adding would exceed 2 investors
-                    if (checked && includedAllocations.length >= 2) {
-                      return; // Don't allow more than 2
-                    }
-                    handleAllocationChange(index, 'isIncluded', checked);
-                  }}
-                  disabled={!alloc.isIncluded && includedAllocations.length >= 2}
+                  onCheckedChange={(checked) => handleToggleInvestor(index, checked)}
                 />
               </div>
+            </div>
+
+            {/* Reason - always visible */}
+            <div className="p-2 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground italic">"{alloc.reason}"</p>
             </div>
 
             {alloc.isIncluded && (
@@ -159,7 +177,7 @@ const InvestorNegotiation = ({
                   <div className="flex items-center justify-between">
                     <Label className="text-sm flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
-                      Investment
+                      Negotiate Investment
                     </Label>
                     <span className="font-mono text-sm font-semibold">{formatCurrency(alloc.amount)}</span>
                   </div>
@@ -168,7 +186,7 @@ const InvestorNegotiation = ({
                       value={[alloc.amount]}
                       onValueChange={([v]) => handleAllocationChange(index, 'amount', v)}
                       min={10000}
-                      max={askAmount}
+                      max={maxInvestment}
                       step={5000}
                       className="flex-1"
                     />
@@ -176,7 +194,7 @@ const InvestorNegotiation = ({
                       type="number"
                       value={alloc.amount}
                       onChange={(e) => handleAllocationChange(index, 'amount', Number(e.target.value) || 0)}
-                      className="w-24 font-mono text-sm"
+                      className="w-28 font-mono text-sm"
                     />
                   </div>
                 </div>
@@ -195,7 +213,7 @@ const InvestorNegotiation = ({
                       value={[alloc.equityShare]}
                       onValueChange={([v]) => handleAllocationChange(index, 'equityShare', v)}
                       min={0.5}
-                      max={totalEquity}
+                      max={50}
                       step={0.5}
                       className="flex-1"
                     />
@@ -203,7 +221,7 @@ const InvestorNegotiation = ({
                       type="number"
                       value={alloc.equityShare}
                       onChange={(e) => handleAllocationChange(index, 'equityShare', Number(e.target.value) || 0)}
-                      className="w-24 font-mono text-sm"
+                      className="w-28 font-mono text-sm"
                       step={0.5}
                     />
                   </div>
@@ -231,18 +249,15 @@ const InvestorNegotiation = ({
                       type="number"
                       value={alloc.royaltyPercent}
                       onChange={(e) => handleAllocationChange(index, 'royaltyPercent', Number(e.target.value) || 0)}
-                      className="w-24 font-mono text-sm"
+                      className="w-28 font-mono text-sm"
                       step={0.5}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Investor receives {alloc.royaltyPercent}% of gross revenue until {formatCurrency(alloc.amount * 2)} repaid
-                  </p>
-                </div>
-
-                {/* Reason */}
-                <div className="p-2 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground italic">"{alloc.reason}"</p>
+                  {alloc.royaltyPercent > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Investor receives {alloc.royaltyPercent}% of gross revenue until {formatCurrency(alloc.amount * 2)} repaid
+                    </p>
+                  )}
                 </div>
               </>
             )}
@@ -252,7 +267,7 @@ const InvestorNegotiation = ({
 
       {includedAllocations.length === 0 && (
         <div className="text-center py-6 text-muted-foreground">
-          <p className="text-sm">Select up to 2 investors to include in the deal</p>
+          <p className="text-sm">Toggle investors on to include them in your deal</p>
         </div>
       )}
     </div>
