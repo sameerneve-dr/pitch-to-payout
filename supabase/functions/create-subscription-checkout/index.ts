@@ -76,7 +76,7 @@ serve(async (req) => {
     console.log("Using priceId:", priceId);
 
     // Create Flowglad checkout session
-    const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/purchaseSessions", {
+    const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${flowgladSecretKey}`,
@@ -99,8 +99,20 @@ serve(async (req) => {
       }),
     });
 
-    const flowgladData = await flowgladResponse.json();
-    console.log("Flowglad response:", JSON.stringify(flowgladData));
+    const responseText = await flowgladResponse.text();
+    console.log("Flowglad response status:", flowgladResponse.status);
+    console.log("Flowglad response:", responseText);
+
+    let flowgladData;
+    try {
+      flowgladData = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse Flowglad response:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid response from payment system" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!flowgladResponse.ok) {
       console.error("Flowglad API error:", flowgladData);
