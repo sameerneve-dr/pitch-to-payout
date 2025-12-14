@@ -86,12 +86,12 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         checkoutSession: {
-          customerExternalId: user.id,
           priceSlug: 'investor_panel_demo',
           quantity: 1,
           successUrl: `${origin}/success?deal_id=${dealId}`,
           cancelUrl: `${origin}/deal/${dealId}`,
           type: 'product',
+          anonymous: true,
           outputName: `Investment in ${deal.panel.pitch.startup_name || 'Startup'}`,
           outputMetadata: {
             deal_id: dealId,
