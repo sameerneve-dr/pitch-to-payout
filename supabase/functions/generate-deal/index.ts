@@ -62,12 +62,38 @@ serve(async (req) => {
     const askAmount = panel.pitch.ask_amount;
     const equityPercent = panel.pitch.equity_percent;
 
-    // Filter participating investors (those with offers > 0)
-    const participants = personas.filter((p: any) => p.offerAmount > 0);
-    const totalOffered = participants.reduce((sum: number, p: any) => sum + p.offerAmount, 0);
+    // Filter participating investors (those with offers > 0) and sort by offer amount descending
+    const participants = personas
+      .filter((p: any) => p.offerAmount > 0)
+      .sort((a: any, b: any) => b.offerAmount - a.offerAmount);
+    
+    // Select top 2 investors that best match the ask amount
+    const selectBestInvestors = (investors: any[], targetAmount: number) => {
+      if (investors.length <= 2) return investors;
+      
+      // Try to find best 2-investor combination closest to ask
+      let bestPair = [investors[0], investors[1]];
+      let bestDiff = Math.abs(investors[0].offerAmount + investors[1].offerAmount - targetAmount);
+      
+      for (let i = 0; i < investors.length; i++) {
+        for (let j = i + 1; j < investors.length; j++) {
+          const sum = investors[i].offerAmount + investors[j].offerAmount;
+          const diff = Math.abs(sum - targetAmount);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestPair = [investors[i], investors[j]];
+          }
+        }
+      }
+      
+      return bestPair;
+    };
+    
+    const selectedInvestors = selectBestInvestors(participants, askAmount);
+    const totalOffered = selectedInvestors.reduce((sum: number, p: any) => sum + p.offerAmount, 0);
 
-    // Calculate allocations
-    const allocations = participants.map((p: any) => {
+    // Calculate allocations with royalty option (default 0)
+    const allocations = selectedInvestors.map((p: any) => {
       const percentage = (p.offerAmount / askAmount) * 100;
       const equityShare = (p.offerAmount / askAmount) * equityPercent;
       return {
@@ -76,7 +102,9 @@ serve(async (req) => {
         amount: p.offerAmount,
         percentageOfDeal: percentage,
         equityShare: equityShare,
-        reason: p.offerReason
+        royaltyPercent: 0, // Default royalty, can be negotiated
+        reason: p.offerReason,
+        isIncluded: true
       };
     });
 
