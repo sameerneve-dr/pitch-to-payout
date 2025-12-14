@@ -1,16 +1,16 @@
 project_id = "znqgyjigzcasikxfysnf"
 
 [functions.generate-panel]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-deal]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-deal-checkout]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-flowglad-checkout]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-flowglad-billing]
-verify_jwt = false
+verify_jwt = true

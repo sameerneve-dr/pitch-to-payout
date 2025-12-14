@@ -12,7 +12,7 @@ import { Zap, Mail, Lock } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().trim().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 const AuthPage = () => {
