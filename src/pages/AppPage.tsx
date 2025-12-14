@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
+import { toast } from 'sonner';
 import { 
   Zap, 
   Plus, 
@@ -18,6 +19,21 @@ const AppPage = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isActive, plan, loading: billingLoading } = useBilling();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Show welcome toast for subscription success
+  useEffect(() => {
+    const source = searchParams.get('source');
+    const planParam = searchParams.get('plan');
+    
+    if (source === 'subscription' && planParam) {
+      toast.success(`Welcome to SharkBank ${planParam.charAt(0).toUpperCase() + planParam.slice(1)}!`, {
+        description: 'Your subscription is now active.',
+      });
+      // Clear the query params
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   // Redirect if not authenticated or not subscribed
   useEffect(() => {
