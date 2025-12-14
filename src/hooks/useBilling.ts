@@ -25,7 +25,7 @@ export function useBilling() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        setBilling(prev => ({ ...prev, loading: false }));
+        setBilling(prev => ({ ...prev, loading: false, isActive: false, plan: 'free' }));
         return;
       }
 
@@ -35,8 +35,11 @@ export function useBilling() {
         },
       });
 
+      // Handle auth errors gracefully - treat as not subscribed
       if (response.error) {
-        throw new Error(response.error.message);
+        console.error('Billing fetch error:', response.error);
+        setBilling(prev => ({ ...prev, loading: false, isActive: false, plan: 'free' }));
+        return;
       }
 
       setBilling({
@@ -52,6 +55,8 @@ export function useBilling() {
       setBilling(prev => ({
         ...prev,
         loading: false,
+        isActive: false,
+        plan: 'free',
         error: error instanceof Error ? error.message : 'Failed to fetch billing',
       }));
     }
@@ -59,6 +64,24 @@ export function useBilling() {
 
   useEffect(() => {
     fetchBilling();
+
+    // Refetch when auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchBilling();
+      } else if (event === 'SIGNED_OUT') {
+        setBilling({
+          isActive: false,
+          plan: 'free',
+          customerId: null,
+          subscriptions: [],
+          loading: false,
+          error: null,
+        });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return { ...billing, refetch: fetchBilling };
