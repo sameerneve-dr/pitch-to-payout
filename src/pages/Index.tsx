@@ -17,17 +17,11 @@ const Index = () => {
   const { isActive, loading: billingLoading } = useBilling();
   const navigate = useNavigate();
 
-  // Redirect logged-in users to dashboard
-  useEffect(() => {
-    if (authLoading || billingLoading) return;
+  // Don't auto-redirect - let users see the landing page first
+  // They can manually navigate to /app or /plans
 
-    if (user && !user.is_anonymous) {
-      navigate('/app');
-    }
-  }, [user, authLoading, billingLoading, navigate]);
-
-  // Show loading while checking auth/billing
-  if (authLoading || (user && billingLoading)) {
+  // Only show loading if still checking auth (very brief)
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -47,12 +41,20 @@ const Index = () => {
             <span className="text-xl font-bold text-foreground">Investor Panel</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">Log In</Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="shadow-[var(--neon-primary)]">Sign Up</Button>
-            </Link>
+            {user && !user.is_anonymous ? (
+              <Link to="/app">
+                <Button size="sm" className="shadow-[var(--neon-primary)]">Go to Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">Log In</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="shadow-[var(--neon-primary)]">Sign Up</Button>
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
