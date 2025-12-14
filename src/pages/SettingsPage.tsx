@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Loader2, Trash2, Crown, Zap } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import AvatarUpload from '@/components/AvatarUpload';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,7 @@ import {
 
 const SettingsPage = () => {
   const { user, signOut } = useAuth();
-  const { profile, resetDemoData, loading } = useProfile();
+  const { profile, resetDemoData, loading, refetch } = useProfile();
   const [resetting, setResetting] = useState(false);
 
   const handleResetDemoData = async () => {
@@ -63,6 +64,24 @@ const SettingsPage = () => {
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
         <div className="space-y-6">
+          {/* Profile Picture */}
+          {user && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Picture</CardTitle>
+                <CardDescription>Upload a photo to personalize your account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AvatarUpload
+                  userId={user.id}
+                  avatarUrl={profile?.avatar_url || null}
+                  name={profile?.name || null}
+                  onUploadComplete={() => refetch()}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Account Info */}
           <Card>
             <CardHeader>
@@ -70,6 +89,10 @@ const SettingsPage = () => {
               <CardDescription>Your account information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="font-medium">{profile?.name || 'Not set'}</p>
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
                 <p className="font-medium">{user?.email || 'Anonymous User'}</p>
