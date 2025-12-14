@@ -48,16 +48,25 @@ serve(async (req) => {
       );
     }
 
-    // Get the appropriate price slug
-    const priceSlug = plan === 'plus' 
+    // Get the appropriate price slug (using env if set, otherwise default demo slugs)
+    const envPriceSlug = plan === "plus" 
       ? Deno.env.get("FLOWGLAD_PRICE_ID_PLUS")
       : Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
 
+    const defaultPriceSlug = plan === "plus" ? "investor_demo_plus" : "investor_demo_pro";
+    const priceSlug = envPriceSlug || defaultPriceSlug;
+
     if (!priceSlug) {
-      console.error(`Missing FLOWGLAD_PRICE_ID_${plan.toUpperCase()}`);
+      console.error(`Missing Flowglad price slug for plan: ${plan}`);
       return new Response(
         JSON.stringify({ error: "Price configuration missing" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!envPriceSlug) {
+      console.log(
+        `FLOWGLAD_PRICE_ID_${plan.toUpperCase()} not set, falling back to default slug '${priceSlug}'`
       );
     }
 
@@ -72,30 +81,25 @@ serve(async (req) => {
 
     const origin = Deno.env.get("APP_DOMAIN") || req.headers.get("origin") || "https://investor-panel.lovable.app";
 
-    console.log("Creating subscription checkout for plan:", plan);
+    console.log("Creating subscription for plan:", plan);
     console.log("Using priceSlug:", priceSlug);
 
-    // Create Flowglad checkout session
-    const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
+    // Create Flowglad subscription (see https://docs.flowglad.com/api-reference/subscriptions/create-subscription)
+    const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/subscriptions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${flowgladSecretKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        checkoutSession: {
-          priceSlug: priceSlug,
-          quantity: 1,
-          successUrl: `${origin}/subscription/success?plan=${plan}`,
-          cancelUrl: `${origin}/pricing`,
-          type: 'product',
-          anonymous: true,
-          outputName: `Investor Panel ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-          outputMetadata: {
-            user_id: user.id,
-            plan: plan
-          }
-        }
+        customerExternalId: user.id,
+        priceSlug,
+        quantity: 1,
+        metadata: {
+          user_id: user.id,
+          plan,
+        },
+        name: `Investor Panel ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
       }),
     });
 
@@ -122,21 +126,26 @@ serve(async (req) => {
       );
     }
 
-    // Extract checkout URL
-    const checkoutUrl = flowgladData?.checkoutSession?.url || flowgladData?.url;
-    
-    if (!checkoutUrl) {
-      console.error("No checkout URL in response:", flowgladData);
+    const subscriptionId = flowgladData?.subscription?.id;
+
+    if (!subscriptionId) {
+      console.error("No subscription ID in response:", flowgladData);
       return new Response(
-        JSON.stringify({ error: "No checkout URL returned" }),
+        JSON.stringify({ error: "No subscription ID returned" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Checkout URL created:", checkoutUrl);
+    console.log("Subscription created with ID:", subscriptionId);
+
+    // For compatibility with existing frontend, return a checkout_url pointing to the success page
+    const successUrl = `${origin}/subscription/success?plan=${plan}`;
 
     return new Response(
-      JSON.stringify({ checkout_url: checkoutUrl }),
+      JSON.stringify({ 
+        checkout_url: successUrl,
+        subscription_id: subscriptionId,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
