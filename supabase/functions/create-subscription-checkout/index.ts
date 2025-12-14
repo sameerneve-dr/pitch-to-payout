@@ -73,8 +73,8 @@ serve(async (req) => {
     console.log("APP_DOMAIN:", appDomain);
 
     // Create checkout session using customerExternalId and priceSlug per Flowglad docs
-    const successUrl = `${appDomain}/success?source=subscription&plan=${plan}`;
-    const cancelUrl = `${appDomain}/pricing`;
+    const successUrl = `${appDomain}/checkout/return?source=subscription&id=${user.id}&plan=${plan}&status=success`;
+    const cancelUrl = `${appDomain}/checkout/return?source=subscription&id=${user.id}&plan=${plan}&status=cancel`;
 
     console.log("Success URL:", successUrl);
     console.log("Cancel URL:", cancelUrl);

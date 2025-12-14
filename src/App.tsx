@@ -13,6 +13,7 @@ import PanelPage from "./pages/PanelPage";
 import DealPage from "./pages/DealPage";
 import SuccessPage from "./pages/SuccessPage";
 import SubscriptionSuccessPage from "./pages/SubscriptionSuccessPage";
+import CheckoutReturnPage from "./pages/CheckoutReturnPage";
 import HistoryPage from "./pages/HistoryPage";
 import BillingPage from "./pages/BillingPage";
 import PricingPage from "./pages/PricingPage";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+          <Route path="/checkout/return" element={<CheckoutReturnPage />} />
           
           {/* Protected routes (require active subscription) */}
           <Route path="/app" element={<AppPage />} />
