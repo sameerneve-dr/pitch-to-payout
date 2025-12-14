@@ -30,27 +30,32 @@ serve(async (req) => {
 
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
     const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
-    const APP_DOMAIN = Deno.env.get('APP_DOMAIN');
     
     if (!FLOWGLAD_SECRET_KEY) throw new Error('FLOWGLAD_SECRET_KEY not configured');
     if (!FLOWGLAD_PRICE_ID) throw new Error('FLOWGLAD_PRICE_ID not configured');
-    if (!APP_DOMAIN) throw new Error('APP_DOMAIN not configured');
 
-    // Create Flowglad checkout session for subscription/upgrade
-    const flowgladResponse = await fetch('https://api.flowglad.com/v1/checkout/sessions', {
+    // Get origin from request headers for proper redirect
+    const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
+
+    // Create Flowglad checkout session using the correct API endpoint per docs
+    // https://docs.flowglad.com/api-reference/checkout-sessions/create-checkout-session
+    const flowgladResponse = await fetch('https://app.flowglad.com/api/v1/checkout-sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        customer_id: user.id,
-        price_id: FLOWGLAD_PRICE_ID,
-        success_url: `${APP_DOMAIN}/billing/success`,
-        cancel_url: `${APP_DOMAIN}/billing/cancel`,
-        customer_email: user.email,
-        metadata: {
-          user_id: user.id,
+        checkoutSession: {
+          customerExternalId: user.id,
+          priceId: FLOWGLAD_PRICE_ID,
+          successUrl: `${origin}/billing/success`,
+          cancelUrl: `${origin}/billing/cancel`,
+          type: 'product',
+          outputMetadata: {
+            user_id: user.id,
+            email: user.email,
+          },
         },
       }),
     });
@@ -58,14 +63,15 @@ serve(async (req) => {
     if (!flowgladResponse.ok) {
       const errorText = await flowgladResponse.text();
       console.error('Flowglad API error:', flowgladResponse.status, errorText);
-      throw new Error(`Flowglad error: ${flowgladResponse.status}`);
+      throw new Error(`Flowglad error: ${flowgladResponse.status} - ${errorText}`);
     }
 
-    const checkoutSession = await flowgladResponse.json();
+    const responseData = await flowgladResponse.json();
+    const checkoutUrl = responseData.url;
 
     console.log('Upgrade checkout created for user:', user.id);
 
-    return new Response(JSON.stringify({ url: checkoutSession.url }), {
+    return new Response(JSON.stringify({ url: checkoutUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

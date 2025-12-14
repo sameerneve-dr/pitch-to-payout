@@ -62,16 +62,74 @@ serve(async (req) => {
     // Get origin from request headers for proper redirect
     const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
 
-    // Update deal status to paid (demo mode - skip actual payment)
+    const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
+    const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
+
+    // If Flowglad is configured, create a real checkout session
+    if (FLOWGLAD_SECRET_KEY && FLOWGLAD_PRICE_ID) {
+      try {
+        // Create Flowglad checkout session using the correct API endpoint per docs
+        // https://docs.flowglad.com/api-reference/checkout-sessions/create-checkout-session
+        const flowgladResponse = await fetch('https://app.flowglad.com/api/v1/checkout-sessions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            checkoutSession: {
+              customerExternalId: user.id,
+              priceId: FLOWGLAD_PRICE_ID,
+              successUrl: `${origin}/success?deal_id=${dealId}`,
+              cancelUrl: `${origin}/deal/${dealId}`,
+              type: 'product',
+              outputMetadata: {
+                deal_id: dealId,
+                user_id: user.id,
+                startup_name: deal.panel.pitch.startup_name,
+              },
+            },
+          }),
+        });
+
+        if (flowgladResponse.ok) {
+          const responseData = await flowgladResponse.json();
+          const checkoutUrl = responseData.url;
+
+          // Update deal with checkout URL
+          await supabase
+            .from('deals')
+            .update({ 
+              status: 'accepted',
+              checkout_url: checkoutUrl,
+            })
+            .eq('id', dealId);
+
+          console.log('Flowglad checkout created for deal:', dealId);
+
+          return new Response(JSON.stringify({ url: checkoutUrl }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          const errorText = await flowgladResponse.text();
+          console.error('Flowglad API error:', flowgladResponse.status, errorText);
+          // Fall through to demo mode
+        }
+      } catch (flowgladError) {
+        console.error('Flowglad request failed:', flowgladError);
+        // Fall through to demo mode
+      }
+    }
+
+    // Demo mode: Skip actual payment and mark as paid
     await supabase
       .from('deals')
       .update({ status: 'paid' })
       .eq('id', dealId);
 
     console.log('Demo mode: Deal accepted and marked as paid:', dealId);
-    console.log('Redirect URL origin:', origin);
 
-    // For demo mode, redirect directly to success page
+    // Redirect directly to success page
     const successUrl = `${origin}/success?deal_id=${dealId}`;
 
     return new Response(JSON.stringify({ url: successUrl }), {
