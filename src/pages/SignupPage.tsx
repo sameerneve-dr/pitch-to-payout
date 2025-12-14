@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Zap, Loader2, ArrowLeft } from 'lucide-react';
+import { Waves, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 
 const signupSchema = z.object({
@@ -22,6 +22,7 @@ const SignupPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Redirect if already logged in with a real account
   useEffect(() => {
@@ -86,12 +87,12 @@ const SignupPage = () => {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center shadow-[var(--neon-primary)]">
-                <Zap className="w-7 h-7 text-primary-foreground" />
+                <Waves className="w-7 h-7 text-primary-foreground" />
               </div>
             </div>
             <CardTitle className="text-2xl">Create Account</CardTitle>
             <CardDescription>
-              Sign up to start pitching to AI investors
+              Sign up to start pitching to investors
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -120,14 +121,24 @@ const SignupPage = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Must be at least 6 characters
                 </p>
