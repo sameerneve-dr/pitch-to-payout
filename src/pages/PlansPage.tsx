@@ -32,11 +32,28 @@ const PlansPage = () => {
 
     setSubscribing(plan);
 
-    // Simulate payment success - skip Flowglad checkout
-    setTimeout(() => {
-      toast.success('Payment successful!');
-      navigate(`/app?source=subscription&plan=${plan}`);
-    }, 1000);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
+        body: { plan },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      const checkoutUrl = data?.checkout_url || data?.url;
+      if (!checkoutUrl) {
+        throw new Error('No checkout URL returned');
+      }
+
+      // Redirect to Flowglad checkout
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      toast.error('Failed to start checkout. Please try again.');
+      setSubscribing(null);
+    }
   };
 
   if (authLoading || billingLoading) {
