@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import TermSheet, { TermSheetTerms } from '@/components/TermSheet';
 import { 
   ArrowLeft, 
   Loader2, 
@@ -16,7 +17,8 @@ import {
   Check,
   X,
   Sparkles,
-  Zap
+  Zap,
+  Save
 } from 'lucide-react';
 
 interface Allocation {
@@ -36,6 +38,8 @@ interface DealTerms {
   allocations: Allocation[];
   fundingStatus: string;
   shortfall: number;
+  // Term sheet fields (persisted)
+  termSheet?: TermSheetTerms;
 }
 
 interface Deal {
@@ -61,6 +65,9 @@ const DealPage = () => {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [currentTerms, setCurrentTerms] = useState<TermSheetTerms | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -101,8 +108,54 @@ const DealPage = () => {
     }
   };
 
+  const handleTermsChange = (terms: TermSheetTerms) => {
+    setCurrentTerms(terms);
+    setHasChanges(true);
+  };
+
+  const handleSaveTerms = async () => {
+    if (!currentTerms || !deal) return;
+    
+    setSaving(true);
+    try {
+      const updatedDealTerms = {
+        ...deal.deal_terms,
+        termSheet: currentTerms,
+      };
+
+      const { error } = await supabase
+        .from('deals')
+        .update({ deal_terms: updatedDealTerms as any })
+        .eq('id', dealId);
+
+      if (error) throw error;
+
+      setDeal({ ...deal, deal_terms: updatedDealTerms });
+      setHasChanges(false);
+      
+      toast({
+        title: 'Terms Saved',
+        description: 'Your term sheet has been updated.',
+      });
+    } catch (error) {
+      console.error('Error saving terms:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save terms',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAcceptDeal = async () => {
     if (!session) return;
+    
+    // Save terms first if there are changes
+    if (hasChanges && currentTerms) {
+      await handleSaveTerms();
+    }
     
     setProcessing(true);
     try {
@@ -117,7 +170,6 @@ const DealPage = () => {
         throw new Error(response.error.message);
       }
 
-      // Redirect to Flowglad checkout
       window.location.href = response.data.url;
     } catch (error) {
       console.error('Error creating checkout:', error);
@@ -181,7 +233,7 @@ const DealPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
         <Link to={`/panel/${deal.panel_id}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Panel
@@ -195,137 +247,164 @@ const DealPage = () => {
           </Badge>
         </div>
 
-        {/* Main Deal Card */}
-        <Card className="border-2 border-primary/30 bg-gradient-to-br from-card to-accent/10 mb-8">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-3xl font-bold">
-              {deal.panel.pitch.startup_name || 'Your Startup'} Deal
-            </CardTitle>
-            <CardDescription className="text-lg">
-              AI-Generated Investment Terms
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* Key Metrics */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center p-6 bg-background rounded-xl">
-                <DollarSign className="w-8 h-8 mx-auto mb-2 text-primary" />
-                <p className="text-3xl font-bold text-foreground">
-                  {formatCurrency(terms.askAmount)}
-                </p>
-                <p className="text-sm text-muted-foreground">Total Ask</p>
-              </div>
-              <div className="text-center p-6 bg-background rounded-xl">
-                <Users className="w-8 h-8 mx-auto mb-2 text-primary" />
-                <p className="text-3xl font-bold text-foreground">
-                  {terms.equityPercent}%
-                </p>
-                <p className="text-sm text-muted-foreground">Equity</p>
-              </div>
-              <div className="text-center p-6 bg-background rounded-xl">
-                <TrendingUp className="w-8 h-8 mx-auto mb-2 text-primary" />
-                <p className="text-3xl font-bold text-foreground">
-                  {formatCurrency(terms.postMoneyValuation)}
-                </p>
-                <p className="text-sm text-muted-foreground">Post-Money</p>
-              </div>
-            </div>
-
-            {/* Funding Progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Funding Progress</span>
-                <span className="font-medium">
-                  {formatCurrency(terms.totalOffered)} / {formatCurrency(terms.askAmount)}
-                </span>
-              </div>
-              <Progress value={Math.min(fundedPercentage, 100)} className="h-3" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{fundedPercentage.toFixed(0)}% funded</span>
-                <Badge variant={terms.fundingStatus === 'fully_funded' ? 'default' : 'secondary'}>
-                  {terms.fundingStatus === 'fully_funded' ? 'Fully Funded' : 'Partially Funded'}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Allocations */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Investor Allocations</h3>
-              <div className="space-y-3">
-                {terms.allocations.map((alloc, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-4 bg-background rounded-lg border border-border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-primary font-semibold">
-                          {alloc.investor.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{alloc.investor}</p>
-                        <p className="text-sm text-muted-foreground">{alloc.role}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{formatCurrency(alloc.amount)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {alloc.equityShare.toFixed(2)}% equity
-                      </p>
-                    </div>
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Deal Summary */}
+          <div className="space-y-6">
+            {/* Main Deal Card */}
+            <Card className="border-2 border-primary/30 bg-gradient-to-br from-card to-accent/10">
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl font-bold">
+                  {deal.panel.pitch.startup_name || 'Your Startup'} Deal
+                </CardTitle>
+                <CardDescription>
+                  AI-Generated Investment Terms
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Key Metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-4 bg-background rounded-xl">
+                    <DollarSign className="w-6 h-6 mx-auto mb-1 text-primary" />
+                    <p className="text-xl font-bold text-foreground">
+                      {formatCurrency(terms.askAmount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Total Ask</p>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="text-center p-4 bg-background rounded-xl">
+                    <Users className="w-6 h-6 mx-auto mb-1 text-primary" />
+                    <p className="text-xl font-bold text-foreground">
+                      {terms.equityPercent}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Equity</p>
+                  </div>
+                  <div className="text-center p-4 bg-background rounded-xl">
+                    <TrendingUp className="w-6 h-6 mx-auto mb-1 text-primary" />
+                    <p className="text-xl font-bold text-foreground">
+                      {formatCurrency(terms.postMoneyValuation)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Post-Money</p>
+                  </div>
+                </div>
 
-            {/* Valuation Formula */}
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Post-Money Valuation Formula</p>
-              <p className="font-mono text-sm">
-                {formatCurrency(terms.askAmount)} ÷ {terms.equityPercent}% = {formatCurrency(terms.postMoneyValuation)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                {/* Funding Progress */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Funding Progress</span>
+                    <span className="font-medium">
+                      {formatCurrency(terms.totalOffered)} / {formatCurrency(terms.askAmount)}
+                    </span>
+                  </div>
+                  <Progress value={Math.min(fundedPercentage, 100)} className="h-2" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{fundedPercentage.toFixed(0)}% funded</span>
+                    <Badge variant={terms.fundingStatus === 'fully_funded' ? 'default' : 'secondary'} className="text-xs">
+                      {terms.fundingStatus === 'fully_funded' ? 'Fully Funded' : 'Partially Funded'}
+                    </Badge>
+                  </div>
+                </div>
 
-        {/* CTA Section */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground mb-4">
-              One click can move {formatCurrency(terms.askAmount)}+ (test mode). 
-              This replaces weeks of fundraising meetings with one execution flow.
-            </p>
-            <div className="flex gap-4">
+                {/* Allocations */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Investor Allocations</h3>
+                  <div className="space-y-2">
+                    {terms.allocations.map((alloc, index) => (
+                      <div 
+                        key={index} 
+                        className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-primary font-semibold text-sm">
+                              {alloc.investor.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{alloc.investor}</p>
+                            <p className="text-xs text-muted-foreground">{alloc.role}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm">{formatCurrency(alloc.amount)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {alloc.equityShare.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CTA Section */}
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-muted-foreground text-sm mb-4">
+                  One click can move {formatCurrency(terms.askAmount)}+ (test mode).
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={handleDeclineDeal}
+                    disabled={processing}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Decline
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={handleAcceptDeal}
+                    disabled={processing}
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Accept Investment
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Term Sheet */}
+          <div className="space-y-4">
+            <TermSheet
+              initialInvestment={terms.termSheet?.investmentAmount || terms.totalOffered}
+              initialEquity={terms.termSheet?.equityPercent || terms.equityPercent}
+              askAmount={terms.askAmount}
+              onTermsChange={handleTermsChange}
+            />
+            
+            {hasChanges && (
               <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={handleDeclineDeal}
-                disabled={processing}
+                onClick={handleSaveTerms} 
+                disabled={saving}
+                className="w-full"
+                variant="outline"
               >
-                <X className="w-4 h-4 mr-2" />
-                Decline
-              </Button>
-              <Button 
-                className="flex-1"
-                onClick={handleAcceptDeal}
-                disabled={processing}
-              >
-                {processing ? (
+                {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
+                    Saving...
                   </>
                 ) : (
                   <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Accept Investment
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Term Sheet
                   </>
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
