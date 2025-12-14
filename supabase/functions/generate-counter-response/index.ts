@@ -121,8 +121,7 @@ Respond in JSON format:
           { role: 'system', content: 'You are a venture capital simulation AI. Respond only with valid JSON.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
       }),
     });
 
