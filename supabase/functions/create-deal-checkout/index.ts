@@ -89,6 +89,7 @@ serve(async (req) => {
         checkoutSession: {
           customerExternalId: user.id,
           priceId: FLOWGLAD_PRICE_ID,
+          quantity: 1,
           successUrl: `${origin}/success?deal_id=${dealId}`,
           cancelUrl: `${origin}/deal/${dealId}`,
           type: 'product',
