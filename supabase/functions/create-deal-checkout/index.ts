@@ -62,100 +62,28 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://investor-panel.lovable.app';
 
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
-    const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
 
     if (!FLOWGLAD_SECRET_KEY) {
       console.error('Missing FLOWGLAD_SECRET_KEY');
       throw new Error('Payment system not configured. Please set FLOWGLAD_SECRET_KEY.');
     }
 
-    if (!FLOWGLAD_PRICE_ID) {
-      console.error('Missing FLOWGLAD_PRICE_ID');
-      throw new Error('Deal price not configured. Please set FLOWGLAD_PRICE_ID.');
-    }
+    // Use priceSlug instead of priceId
+    const priceSlug = 'investor_panel_demo';
 
     // Build customer data
-    const externalId = user.id;
-    const email = user.email || "demo@investorpanel.test";
-    const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Demo User";
-
-    console.log('Creating checkout for deal:', dealId);
-    console.log('Customer externalId:', externalId);
-
-    // Step 1: Ensure customer exists in Flowglad
-    console.log('Ensuring Flowglad customer exists...');
-    
-    const customerPayload = {
-      customer: {
-        externalId,
-        email,
-        name,
-      }
-    };
-
-    const customerResponse = await fetch('https://app.flowglad.com/api/v1/customers', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(customerPayload),
-    });
-
-    const customerText = await customerResponse.text();
-    console.log('Customer creation status:', customerResponse.status);
-    console.log('Customer creation response:', customerText.substring(0, 500));
-
-    let customerId: string | undefined;
-
-    if (customerResponse.status === 200 || customerResponse.status === 201) {
-      const customerData = JSON.parse(customerText);
-      // Try multiple possible response structures
-      customerId = customerData?.data?.customer?.id 
-        || customerData?.customer?.id 
-        || customerData?.data?.id 
-        || customerData?.id;
-      console.log('Customer created, extracted id:', customerId);
-    } else if (customerResponse.status === 409) {
-      // Customer already exists, fetch by externalId
-      console.log('Customer exists, fetching by externalId...');
-      const getResponse = await fetch(`https://app.flowglad.com/api/v1/customers?externalId=${encodeURIComponent(externalId)}`, {
-        headers: {
-          'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const getResponseText = await getResponse.text();
-      console.log('Get customer response:', getResponseText.substring(0, 500));
-      
-      if (getResponse.ok) {
-        const getData = JSON.parse(getResponseText);
-        customerId = getData?.data?.[0]?.id 
-          || getData?.customers?.[0]?.id 
-          || getData?.customer?.id
-          || getData?.data?.customer?.id;
-        console.log('Fetched existing customer id:', customerId);
-      } else {
-        console.error('Failed to fetch existing customer');
-      }
-    } else {
-      console.error('Customer creation failed with status:', customerResponse.status, customerText);
-    }
-
-    if (!customerId) {
-      console.error('Could not obtain customer ID');
-      throw new Error('Failed to create payment customer');
-    }
-
-    // Step 2: Create checkout session
-    const dealTerms = deal.deal_terms as any;
+    const customerExternalId = user.id;
     const startupName = deal.panel.pitch.startup_name || 'Startup';
 
+    console.log('Creating checkout for deal:', dealId);
+    console.log('Customer externalId:', customerExternalId);
+    console.log('Using priceSlug:', priceSlug);
+
+    // Create checkout session using customerExternalId and priceSlug per Flowglad docs
     const checkoutPayload = {
       checkoutSession: {
-        customerId,
-        priceId: FLOWGLAD_PRICE_ID,
+        customerExternalId,
+        priceSlug,
         successUrl: `${origin}/success?deal_id=${dealId}`,
         cancelUrl: `${origin}/deal/${dealId}`,
         type: 'product',
@@ -168,7 +96,7 @@ serve(async (req) => {
       },
     };
 
-    console.log('Creating checkout session...');
+    console.log('Creating checkout session with payload:', JSON.stringify(checkoutPayload));
 
     const checkoutResponse = await fetch('https://app.flowglad.com/api/v1/checkout-sessions', {
       method: 'POST',
