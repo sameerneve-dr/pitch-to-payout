@@ -43,9 +43,7 @@ serve(async (req) => {
       );
     }
 
-    // Use TEST price IDs from environment
-    const flowgladPriceIdPlus = Deno.env.get("FLOWGLAD_PRICE_ID_PLUS");
-    const flowgladPriceIdPro = Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
+    // Use price slugs for subscriptions (like deal checkout uses priceSlug)
     const flowgladSecretKey = Deno.env.get("FLOWGLAD_SECRET_KEY");
 
     if (!flowgladSecretKey) {
@@ -56,21 +54,14 @@ serve(async (req) => {
       );
     }
 
-    if (!flowgladPriceIdPlus || !flowgladPriceIdPro) {
-      console.error("Missing FLOWGLAD_PRICE_ID_PLUS or FLOWGLAD_PRICE_ID_PRO");
-      return new Response(
-        JSON.stringify({ error: "Payment price configuration missing" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const priceId = plan === "plus" ? flowgladPriceIdPlus : flowgladPriceIdPro;
+    // Use priceSlug instead of priceId (matching deal checkout pattern)
+    const priceSlug = plan === "plus" ? "sharkbank_plus" : "sharkbank_pro";
 
     const isTestKey = flowgladSecretKey.toLowerCase().includes("test");
     const environment = isTestKey ? "test" : "live";
 
     console.log("Flowglad environment:", environment);
-    console.log("Selected Flowglad priceId:", priceId);
+    console.log("Using priceSlug:", priceSlug);
 
     if (!isTestKey) {
       console.error("Flowglad secret key does not appear to be a TEST key. Aborting checkout.");
@@ -89,12 +80,7 @@ serve(async (req) => {
       );
     }
 
-    // Build customer data
-    const customerExternalId = user.id;
-
     console.log("Creating subscription for plan:", plan);
-    console.log("Using priceId:", priceId);
-    console.log("Customer externalId:", customerExternalId);
     console.log("APP_DOMAIN:", appDomain);
 
     // Simple absolute URLs
@@ -107,13 +93,15 @@ serve(async (req) => {
     console.log("CANCEL_URL:", cancelUrl);
     console.log("=====================");
 
+    // Use anonymous checkout for hackathon demo (like deal checkout)
     const checkoutPayload = {
       checkoutSession: {
-        customerExternalId,
-        priceId,
+        priceSlug,
         successUrl,
         cancelUrl,
         type: "product",
+        anonymous: true,
+        outputName: `SharkBank ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription`,
         outputMetadata: {
           user_id: user.id,
           plan: plan,
