@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Waves, Check, ArrowLeft, Loader2 } from 'lucide-react';
 
 const PlansPage = () => {
@@ -23,36 +21,12 @@ const PlansPage = () => {
     navigate('/app');
   };
 
-  const handleSubscribe = async (plan: 'plus' | 'pro') => {
-    if (!user || !session) {
+  const handleSubscribe = (plan: 'plus' | 'pro') => {
+    if (!user) {
       navigate('/signup');
       return;
     }
-
-    setSubscribing(plan);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
-        body: { plan },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      const checkoutUrl = data?.checkout_url || data?.url;
-      if (!checkoutUrl) {
-        throw new Error('No checkout URL returned');
-      }
-
-      toast.success('Redirecting to checkout...');
-      window.location.href = checkoutUrl;
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-      toast.error('Failed to start checkout. Please try again.');
-      setSubscribing(null);
-    }
+    navigate(`/subscription-checkout?plan=${plan}`);
   };
 
   if (authLoading || billingLoading) {

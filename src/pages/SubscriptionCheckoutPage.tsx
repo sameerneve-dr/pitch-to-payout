@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,7 +13,8 @@ import {
   CreditCard, 
   Check, 
   Shield,
-  Waves
+  Waves,
+  AlertTriangle
 } from 'lucide-react';
 
 const PLANS = {
@@ -44,7 +44,6 @@ const SubscriptionCheckoutPage = () => {
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
   const [name, setName] = useState('');
-  const [zip, setZip] = useState('');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -83,8 +82,17 @@ const SubscriptionCheckoutPage = () => {
 
     setProcessing(true);
 
-    // Simulate payment processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Create Flowglad checkout in background (for reference only, don't block on it)
+    supabase.functions.invoke('create-subscription-checkout', {
+      body: { plan },
+    }).then(({ data }) => {
+      console.log('Flowglad checkout created (background):', data?.url);
+    }).catch((err) => {
+      console.log('Flowglad checkout background error (ignored):', err);
+    });
+
+    // Simulate brief processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
       // Update profile with subscription
@@ -100,12 +108,12 @@ const SubscriptionCheckoutPage = () => {
       if (error) throw error;
 
       setSuccess(true);
-      toast.success('Payment successful! Welcome to SharkBank ' + planDetails.name);
+      toast.success('Payment successful! ✅');
 
-      // Redirect after showing success
+      // Redirect to dashboard after showing success
       setTimeout(() => {
-        navigate('/app');
-      }, 2000);
+        navigate('/dashboard');
+      }, 1500);
     } catch (error) {
       console.error('Error updating subscription:', error);
       toast.error('Something went wrong. Please try again.');
@@ -201,9 +209,10 @@ const SubscriptionCheckoutPage = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="p-3 bg-accent/20 rounded-lg border border-accent/30 mb-4">
-                  <p className="text-sm text-accent-foreground">
-                    <strong>Demo Mode:</strong> Use card <code className="bg-background px-1 rounded">4242 4242 4242 4242</code>, any expiry, any CVC
+                <div className="p-3 bg-muted rounded-lg border border-border mb-4 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Demo checkout</strong> – no real payment processed. Enter any card details.
                   </p>
                 </div>
 
@@ -215,7 +224,6 @@ const SubscriptionCheckoutPage = () => {
                     value={cardNumber}
                     onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
                     maxLength={19}
-                    required
                   />
                 </div>
 
@@ -228,7 +236,6 @@ const SubscriptionCheckoutPage = () => {
                       value={expiry}
                       onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                       maxLength={5}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -239,7 +246,6 @@ const SubscriptionCheckoutPage = () => {
                       value={cvc}
                       onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
                       maxLength={4}
-                      required
                     />
                   </div>
                 </div>
@@ -251,18 +257,6 @@ const SubscriptionCheckoutPage = () => {
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="zip">ZIP / Postal Code</Label>
-                  <Input
-                    id="zip"
-                    placeholder="12345"
-                    value={zip}
-                    onChange={(e) => setZip(e.target.value)}
-                    required
                   />
                 </div>
 
@@ -286,7 +280,7 @@ const SubscriptionCheckoutPage = () => {
 
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Shield className="w-4 h-4" />
-                  <span>Secure checkout • Demo mode</span>
+                  <span>Demo mode • No real charges</span>
                 </div>
               </form>
             </CardContent>
