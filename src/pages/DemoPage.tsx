@@ -114,6 +114,15 @@ export default function DemoPage() {
 
     setGenerating(true);
     try {
+      // Map stage to valid enum values (MVP, Pre-seed, Seed, Growth)
+      const validStages = ['MVP', 'Pre-seed', 'Seed', 'Growth'];
+      const mappedStage = validStages.includes(startup.stage) 
+        ? startup.stage 
+        : startup.stage.toLowerCase().includes('seed') ? 'Seed'
+        : startup.stage.toLowerCase().includes('pre') ? 'Pre-seed'
+        : startup.stage.toLowerCase().includes('growth') || startup.stage.toLowerCase().includes('series') ? 'Growth'
+        : 'Seed'; // Default fallback
+
       // Create pitch from demo startup
       const { data: pitch, error: pitchError } = await supabase
         .from('pitches')
@@ -121,7 +130,7 @@ export default function DemoPage() {
           user_id: user.id,
           raw_pitch_text: startup.pitch_text,
           startup_name: startup.startup_name,
-          stage: startup.stage as any,
+          stage: mappedStage as any,
           arr: startup.arr,
           ask_amount: startup.ask_amount,
           equity_percent: startup.equity_percent
