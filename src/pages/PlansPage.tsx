@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Zap, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Waves, Check, ArrowLeft, Loader2 } from 'lucide-react';
 
 const PlansPage = () => {
   const navigate = useNavigate();
@@ -29,32 +29,8 @@ const PlansPage = () => {
       return;
     }
 
-    setSubscribing(plan);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Please log in to subscribe');
-        navigate('/login');
-        return;
-      }
-
-      // Demo mode: activate plan directly and go to dashboard
-      await supabase
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          plan: plan,
-          plan_status: 'active',
-        }, { onConflict: 'user_id' });
-
-      toast.success(`${plan.charAt(0).toUpperCase() + plan.slice(1)} plan activated!`);
-      navigate('/app');
-    } catch (error) {
-      console.error('Subscription error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to activate plan');
-    } finally {
-      setSubscribing(null);
-    }
+    // Redirect to the checkout page with plan info
+    navigate(`/checkout/subscription?plan=${plan}`);
   };
 
   if (authLoading || billingLoading) {
@@ -128,7 +104,7 @@ const PlansPage = () => {
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center shadow-[var(--neon-primary)]">
-              <Zap className="w-7 h-7 text-primary-foreground" />
+              <Waves className="w-7 h-7 text-primary-foreground" />
             </div>
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-4">Choose Your Plan</h1>
