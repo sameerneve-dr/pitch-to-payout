@@ -5,23 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Zap, Mail, Lock } from 'lucide-react';
+import { Zap, Mail, CheckCircle } from 'lucide-react';
 
-const authSchema = z.object({
+const emailSchema = z.object({
   email: z.string().trim().email('Please enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
 });
 
 const AuthPage = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signUp, signIn } = useAuth();
+  const { user, signInWithMagicLink } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -29,12 +27,12 @@ const AuthPage = () => {
     }
   }, [user, navigate]);
 
-  const handleAuth = async (type: 'signin' | 'signup') => {
+  const handleSendLink = async () => {
     try {
-      const result = authSchema.safeParse({ email, password });
+      const result = emailSchema.safeParse({ email });
       if (!result.success) {
         toast({
-          title: 'Validation Error',
+          title: 'Invalid email',
           description: result.error.errors[0].message,
           variant: 'destructive',
         });
@@ -43,40 +41,20 @@ const AuthPage = () => {
 
       setLoading(true);
       
-      if (type === 'signup') {
-        const { error } = await signUp(email, password);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: 'Account exists',
-              description: 'This email is already registered. Please sign in instead.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Sign up failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Welcome!',
-            description: 'Account created successfully.',
-          });
-          navigate('/');
-        }
+      const { error } = await signInWithMagicLink(email);
+      
+      if (error) {
+        toast({
+          title: 'Failed to send link',
+          description: error.message,
+          variant: 'destructive',
+        });
       } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: 'Sign in failed',
-            description: error.message,
-            variant: 'destructive',
-          });
-        } else {
-          navigate('/');
-        }
+        setLinkSent(true);
+        toast({
+          title: 'Check your email',
+          description: 'We sent you a magic link to sign in.',
+        });
       }
     } catch (error) {
       toast({
@@ -89,6 +67,44 @@ const AuthPage = () => {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      handleSendLink();
+    }
+  };
+
+  if (linkSent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CheckCircle className="w-7 h-7 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardDescription>
+              We sent a magic link to <span className="font-medium text-foreground">{email}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Click the link in your email to sign in. No password needed.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setLinkSent(false)}
+            >
+              Use a different email
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -99,91 +115,35 @@ const AuthPage = () => {
             </div>
           </div>
           <CardTitle className="text-2xl">Investor Panel</CardTitle>
-          <CardDescription>One pitch, one click, money moves.</CardDescription>
+          <CardDescription>Enter your email to get a magic sign-in link</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="signin" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="signin-email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="founder@startup.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signin-password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signin-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Button 
-                className="w-full" 
-                onClick={() => handleAuth('signin')}
-                disabled={loading}
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="signup" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="founder@startup.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Button 
-                className="w-full" 
-                onClick={() => handleAuth('signup')}
-                disabled={loading}
-              >
-                {loading ? 'Creating account...' : 'Create Account'}
-              </Button>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="founder@startup.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pl-10"
+                autoFocus
+              />
+            </div>
+          </div>
+          <Button 
+            className="w-full" 
+            onClick={handleSendLink}
+            disabled={loading}
+          >
+            {loading ? 'Sending...' : 'Send login link'}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            No password required. We'll email you a secure link.
+          </p>
         </CardContent>
       </Card>
     </div>
