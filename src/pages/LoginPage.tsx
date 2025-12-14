@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
 import { toast } from 'sonner';
-import { Waves, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Waves, Loader2, ArrowLeft, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -143,6 +143,15 @@ const LoginPage = () => {
                 )}
               </Button>
             </form>
+
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border/50">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Tip:</strong> Click in the email field and press ↓ or look for your browser's password icon to see all saved logins.
+                </span>
+              </div>
+            </div>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Don't have an account?{' '}
