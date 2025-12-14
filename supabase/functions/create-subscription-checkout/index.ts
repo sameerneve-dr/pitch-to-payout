@@ -48,7 +48,7 @@ serve(async (req) => {
       );
     }
 
-    // Get the appropriate price slug (using env if set, otherwise default demo slugs)
+    // Get the appropriate price slug
     const envPriceSlug = plan === "plus" 
       ? Deno.env.get("FLOWGLAD_PRICE_ID_PLUS")
       : Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
@@ -61,12 +61,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Price configuration missing" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!envPriceSlug) {
-      console.log(
-        `FLOWGLAD_PRICE_ID_${plan.toUpperCase()} not set, falling back to default slug '${priceSlug}'`
       );
     }
 
@@ -83,68 +77,138 @@ serve(async (req) => {
 
     console.log("Creating subscription for plan:", plan);
     console.log("Using priceSlug:", priceSlug);
+    console.log("User email:", user.email);
 
-    // Create Flowglad subscription (see https://docs.flowglad.com/api-reference/subscriptions/create-subscription)
-    const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/subscriptions", {
+    // Step 1: Create customer in Flowglad first (or get existing)
+    console.log("Creating/getting Flowglad customer for user:", user.id);
+    
+    const customerResponse = await fetch("https://app.flowglad.com/api/v1/customers", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${flowgladSecretKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        customerExternalId: user.id,
-        priceSlug,
-        quantity: 1,
+        externalId: user.id,
+        email: user.email,
+        name: user.email?.split('@')[0] || 'Customer',
+      }),
+    });
+
+    const customerText = await customerResponse.text();
+    console.log("Customer creation response status:", customerResponse.status);
+    console.log("Customer creation response:", customerText);
+
+    let customerId: string;
+
+    if (customerResponse.status === 409) {
+      // Customer already exists, extract the customer ID from existing data
+      console.log("Customer already exists, fetching existing customer");
+      
+      const getCustomerResponse = await fetch(`https://app.flowglad.com/api/v1/customers?externalId=${user.id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${flowgladSecretKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      const getCustomerText = await getCustomerResponse.text();
+      console.log("Get customer response:", getCustomerText);
+      
+      if (!getCustomerResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Failed to retrieve existing customer" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const getCustomerData = JSON.parse(getCustomerText);
+      customerId = getCustomerData.customers?.[0]?.id || getCustomerData.customer?.id;
+    } else if (customerResponse.ok) {
+      const customerData = JSON.parse(customerText);
+      customerId = customerData.customer?.id;
+    } else {
+      console.error("Failed to create customer:", customerText);
+      return new Response(
+        JSON.stringify({ error: `Failed to create customer: ${customerText}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!customerId) {
+      console.error("No customer ID obtained");
+      return new Response(
+        JSON.stringify({ error: "Failed to obtain customer ID" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Using Flowglad customer ID:", customerId);
+
+    // Step 2: Create checkout session instead of direct subscription
+    const successUrl = `${origin}/subscription/success?plan=${plan}`;
+    const cancelUrl = `${origin}/pricing`;
+
+    console.log("Creating checkout session with successUrl:", successUrl);
+
+    const checkoutResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${flowgladSecretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customerId,
+        priceId: priceSlug,
+        successUrl,
+        cancelUrl,
+        type: "subscription",
         metadata: {
           user_id: user.id,
           plan,
         },
-        name: `Investor Panel ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
       }),
     });
 
-    const responseText = await flowgladResponse.text();
-    console.log("Flowglad response status:", flowgladResponse.status);
-    console.log("Flowglad response:", responseText);
+    const checkoutText = await checkoutResponse.text();
+    console.log("Checkout session response status:", checkoutResponse.status);
+    console.log("Checkout session response:", checkoutText);
 
-    let flowgladData;
+    let checkoutData;
     try {
-      flowgladData = JSON.parse(responseText);
+      checkoutData = JSON.parse(checkoutText);
     } catch (e) {
-      console.error("Failed to parse Flowglad response:", e);
+      console.error("Failed to parse checkout response:", e);
       return new Response(
         JSON.stringify({ error: "Invalid response from payment system" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!flowgladResponse.ok) {
-      console.error("Flowglad API error:", flowgladData);
+    if (!checkoutResponse.ok) {
+      console.error("Flowglad checkout API error:", checkoutData);
       return new Response(
-        JSON.stringify({ error: `Payment checkout failed: ${JSON.stringify(flowgladData)}` }),
+        JSON.stringify({ error: `Checkout failed: ${JSON.stringify(checkoutData)}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const subscriptionId = flowgladData?.subscription?.id;
+    const checkoutUrl = checkoutData?.checkoutSession?.url || checkoutData?.url;
 
-    if (!subscriptionId) {
-      console.error("No subscription ID in response:", flowgladData);
+    if (!checkoutUrl) {
+      console.error("No checkout URL in response:", checkoutData);
       return new Response(
-        JSON.stringify({ error: "No subscription ID returned" }),
+        JSON.stringify({ error: "No checkout URL returned" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Subscription created with ID:", subscriptionId);
-
-    // For compatibility with existing frontend, return a checkout_url pointing to the success page
-    const successUrl = `${origin}/subscription/success?plan=${plan}`;
+    console.log("Checkout session created with URL:", checkoutUrl);
 
     return new Response(
       JSON.stringify({ 
-        checkout_url: successUrl,
-        subscription_id: subscriptionId,
+        checkout_url: checkoutUrl,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
