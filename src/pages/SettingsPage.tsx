@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, Trash2, Crown, Zap, ArrowLeft } from 'lucide-react';
+import { Loader2, Trash2, Crown, Zap } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,14 +58,7 @@ const SettingsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-6">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
-        </div>
+        <PageHeader />
 
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
 

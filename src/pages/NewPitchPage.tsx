@@ -10,8 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Sparkles, Loader2 } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 const SAMPLE_PITCH = "I'm building an AI invoicing tool that automatically extracts invoice data, handles approvals, and syncs with accounting software. We have $50k ARR with 47 paying customers, growing 15% MoM. Asking $100,000 for 10% equity.";
 
@@ -160,10 +160,7 @@ const NewPitchPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Link>
+        <PageHeader backTo="/app" backLabel="Back to Dashboard" />
 
         <Card>
           <CardHeader>

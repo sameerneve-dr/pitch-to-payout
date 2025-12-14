@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  ArrowLeft, 
   ArrowRight, 
   Loader2, 
   User, 
@@ -16,6 +15,7 @@ import {
   AlertTriangle,
   DollarSign
 } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 interface Persona {
   name: string;
@@ -153,10 +153,7 @@ const PanelPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Link to="/new" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          New Pitch
-        </Link>
+        <PageHeader backTo="/new" backLabel="New Pitch" />
 
         {/* Header */}
         <div className="mb-8">

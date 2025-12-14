@@ -12,7 +12,6 @@ import TermSheet, { TermSheetTerms } from '@/components/TermSheet';
 import InvestorNegotiation, { InvestorAllocation } from '@/components/InvestorNegotiation';
 import DollarRain from '@/components/DollarRain';
 import { 
-  ArrowLeft, 
   Loader2, 
   DollarSign,
   Users,
@@ -28,6 +27,7 @@ import {
   ThumbsUp,
   ThumbsDown
 } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 interface DealTerms {
   askAmount: number;
@@ -309,10 +309,7 @@ const DealPage = () => {
     <div className="min-h-screen bg-background">
       <DollarRain active={showDollarRain} />
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <Link to={`/panel/${deal.panel_id}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Panel
-        </Link>
+        <PageHeader backTo={`/panel/${deal.panel_id}`} backLabel="Back to Panel" />
 
         {/* Demo Badge */}
         <div className="flex justify-center mb-6">
