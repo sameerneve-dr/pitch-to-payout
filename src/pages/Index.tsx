@@ -102,7 +102,7 @@ const Index = () => {
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold text-card-foreground mb-2">AI Investor Panel</h3>
+            <h3 className="text-xl font-semibold text-card-foreground mb-2">Real Investors</h3>
             <p className="text-muted-foreground">
               3-5 AI personas with unique investment theses ask sharp questions about your startup.
             </p>
@@ -112,9 +112,9 @@ const Index = () => {
             <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
               <TrendingUp className="w-6 h-6 text-secondary" />
             </div>
-            <h3 className="text-xl font-semibold text-card-foreground mb-2">Live Deal Generation</h3>
+            <h3 className="text-xl font-semibold text-card-foreground mb-2">Real Deal Flow Generator</h3>
             <p className="text-muted-foreground">
-              AI generates real allocations, equity splits, and post-money valuation in seconds.
+              Generates real allocations, equity splits, and post-money valuation in seconds.
             </p>
           </div>
           
