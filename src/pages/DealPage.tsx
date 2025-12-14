@@ -169,39 +169,30 @@ const DealPage = () => {
   };
 
   const handleAcceptDeal = async () => {
-    if (!session) return;
+    if (!session || !deal) return;
     
     setShowDollarRain(true);
     setProcessing(true);
     
     try {
-      const response = await supabase.functions.invoke('create-deal-checkout', {
-        body: { dealId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+      // Demo mode: mark deal as paid directly and go to dashboard
+      await supabase
+        .from('deals')
+        .update({ status: 'paid' })
+        .eq('id', dealId);
+
+      toast({
+        title: 'Deal Accepted!',
+        description: 'Congratulations on your funding!',
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-      
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      if (!response.data?.url) {
-        throw new Error('No checkout URL received');
-      }
-
-      console.log('Redirecting to Flowglad checkout:', response.data.url);
-      window.location.href = response.data.url;
+      navigate('/app');
     } catch (error) {
-      console.error('Error creating checkout:', error);
+      console.error('Error accepting deal:', error);
       setShowDollarRain(false);
       toast({
-        title: 'Checkout Failed',
-        description: error instanceof Error ? error.message : 'Failed to create checkout. Please try again.',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to accept deal. Please try again.',
         variant: 'destructive',
       });
       setProcessing(false);
