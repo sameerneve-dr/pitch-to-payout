@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import Confetti from '@/components/Confetti';
+import { playCelebrationSound } from '@/lib/sounds';
 import { Check, DollarSign, ArrowRight, Sparkles } from 'lucide-react';
 
 interface DealTerms {
@@ -35,6 +36,8 @@ const SuccessPage = () => {
     if (dealId) {
       fetchDeal();
       updateDealStatus();
+      // Play celebration sound when page loads
+      playCelebrationSound();
     }
   }, [dealId]);
 
