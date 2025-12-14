@@ -33,25 +33,23 @@ const PlansPage = () => {
     setSubscribing(plan);
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
-        body: { plan },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      // Demo mode: Update profile directly without Flowglad
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          plan: plan,
+          plan_status: 'active',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
 
       if (error) throw error;
 
-      const checkoutUrl = data?.checkout_url || data?.url;
-      if (!checkoutUrl) {
-        throw new Error('No checkout URL returned');
-      }
-
-      // Redirect to Flowglad checkout
-      window.location.href = checkoutUrl;
+      toast.success('Payment successful! Welcome to ' + plan.charAt(0).toUpperCase() + plan.slice(1) + '!');
+      navigate('/app');
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      toast.error('Failed to start checkout. Please try again.');
+      console.error('Error updating subscription:', error);
+      toast.error('Failed to process payment. Please try again.');
       setSubscribing(null);
     }
   };
@@ -193,26 +191,8 @@ const PlansPage = () => {
         </div>
 
         <p className="text-center text-muted-foreground text-sm mt-8">
-          Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
+          Demo mode: Click any plan to instantly activate it.
         </p>
-
-        {/* Demo payment button */}
-        <div className="text-center mt-8 pt-8 border-t border-dashed border-muted">
-          <div className="bg-muted/30 rounded-lg p-6 max-w-md mx-auto">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide mb-3 font-medium">
-              Demo Mode
-            </p>
-            <Button
-              onClick={() => {
-                toast.success('Payment successful!');
-                navigate('/app');
-              }}
-              className="animate-pulse"
-            >
-              Pay Now → Go to Dashboard
-            </Button>
-          </div>
-        </div>
 
         {!user && (
           <p className="text-center text-muted-foreground mt-4">
