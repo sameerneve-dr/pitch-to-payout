@@ -75,12 +75,10 @@ serve(async (req) => {
     // Use priceSlug per Flowglad API docs
     const priceSlug = 'investor_panel_demo';
 
-    // Build customer data
-    const customerExternalId = user.id;
     const startupName = deal.panel.pitch.startup_name || 'Startup';
 
     console.log('Creating checkout for deal:', dealId);
-    console.log('Customer externalId:', customerExternalId);
+    console.log('Using anonymous test checkout (no customerExternalId)');
     console.log('Using priceSlug:', priceSlug);
     console.log('APP_DOMAIN:', appDomain);
 
@@ -97,11 +95,11 @@ serve(async (req) => {
     // Create checkout session using priceSlug per Flowglad docs
     const checkoutPayload = {
       checkoutSession: {
-        customerExternalId,
         priceSlug,
         successUrl,
         cancelUrl,
         type: 'product',
+        anonymous: true,
         outputName: `Investment in ${startupName}`,
         outputMetadata: {
           deal_id: dealId,
