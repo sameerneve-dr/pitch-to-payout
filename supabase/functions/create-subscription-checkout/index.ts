@@ -55,7 +55,14 @@ serve(async (req) => {
       );
     }
 
-    const origin = Deno.env.get("APP_DOMAIN") || req.headers.get("origin") || "https://investor-panel.lovable.app";
+    const appDomain = Deno.env.get("APP_DOMAIN");
+    if (!appDomain) {
+      console.error("Missing APP_DOMAIN environment variable");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Build customer data
     const customerExternalId = user.id;
@@ -63,10 +70,14 @@ serve(async (req) => {
     console.log("Creating subscription for plan:", plan);
     console.log("Using priceSlug:", priceSlug);
     console.log("Customer externalId:", customerExternalId);
+    console.log("APP_DOMAIN:", appDomain);
 
     // Create checkout session using customerExternalId and priceSlug per Flowglad docs
-    const successUrl = `${origin}/subscription/success?plan=${plan}`;
-    const cancelUrl = `${origin}/plans`;
+    const successUrl = `${appDomain}/success?source=subscription&plan=${plan}`;
+    const cancelUrl = `${appDomain}/pricing`;
+
+    console.log("Success URL:", successUrl);
+    console.log("Cancel URL:", cancelUrl);
 
     const checkoutPayload = {
       checkoutSession: {
@@ -75,6 +86,11 @@ serve(async (req) => {
         successUrl,
         cancelUrl,
         type: "product",
+        outputMetadata: {
+          user_id: user.id,
+          plan: plan,
+          source: 'subscription',
+        },
       }
     };
 
@@ -105,27 +121,31 @@ serve(async (req) => {
     }
 
     if (!checkoutResponse.ok) {
-      console.error("Checkout API error:", checkoutData);
+      console.error("Checkout API error:", JSON.stringify(checkoutData));
       return new Response(
-        JSON.stringify({ error: `Checkout failed: ${checkoutData?.error || JSON.stringify(checkoutData)}` }),
+        JSON.stringify({ error: `Checkout failed: ${JSON.stringify(checkoutData?.error || checkoutData)}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const checkoutUrl = checkoutData?.checkoutSession?.url || checkoutData?.url;
+    const sessionId = checkoutData?.checkoutSession?.id || checkoutData?.id;
 
     if (!checkoutUrl) {
-      console.error("No checkout URL in response:", checkoutData);
+      console.error("No checkout URL in response:", JSON.stringify(checkoutData));
       return new Response(
         JSON.stringify({ error: "No checkout URL returned" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Checkout created successfully:", checkoutUrl);
+    console.log("Checkout created successfully - URL:", checkoutUrl, "Session ID:", sessionId);
 
     return new Response(
-      JSON.stringify({ checkout_url: checkoutUrl }),
+      JSON.stringify({ 
+        checkout_url: checkoutUrl,
+        session_id: sessionId,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
