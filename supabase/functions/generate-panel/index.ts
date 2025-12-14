@@ -30,6 +30,27 @@ serve(async (req) => {
 
     const { pitchId, rawPitch, askAmount, equityPercent, startupName, stage, arr, demoInvestors } = await req.json();
 
+    // Validate pitchId is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!pitchId || !uuidRegex.test(pitchId)) {
+      throw new Error('Invalid pitch ID');
+    }
+
+    // Verify ownership of the pitch
+    const { data: pitch, error: pitchError } = await supabase
+      .from('pitches')
+      .select('id, user_id')
+      .eq('id', pitchId)
+      .single();
+
+    if (pitchError || !pitch) {
+      throw new Error('Pitch not found');
+    }
+
+    if (pitch.user_id !== user.id) {
+      throw new Error('Unauthorized: You do not own this pitch');
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 

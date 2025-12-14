@@ -30,6 +30,12 @@ serve(async (req) => {
 
     const { panelId } = await req.json();
 
+    // Validate panelId is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!panelId || !uuidRegex.test(panelId)) {
+      throw new Error('Invalid panel ID');
+    }
+
     // Fetch the panel with pitch data
     const { data: panel, error: panelError } = await supabase
       .from('panels')
@@ -46,7 +52,7 @@ serve(async (req) => {
 
     // Check ownership
     if (panel.pitch.user_id !== user.id) {
-      throw new Error('Unauthorized');
+      throw new Error('Unauthorized: You do not own this panel');
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');

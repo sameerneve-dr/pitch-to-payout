@@ -30,6 +30,12 @@ serve(async (req) => {
 
     const { dealId } = await req.json();
 
+    // Validate dealId is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!dealId || !uuidRegex.test(dealId)) {
+      throw new Error('Invalid deal ID');
+    }
+
     // Fetch deal with panel and pitch
     const { data: deal, error: dealError } = await supabase
       .from('deals')
@@ -50,7 +56,7 @@ serve(async (req) => {
 
     // Check ownership
     if (deal.panel.pitch.user_id !== user.id) {
-      throw new Error('Unauthorized');
+      throw new Error('Unauthorized: You do not own this deal');
     }
 
     const APP_DOMAIN = Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
