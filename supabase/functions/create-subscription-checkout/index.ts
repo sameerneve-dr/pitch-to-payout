@@ -74,7 +74,7 @@ serve(async (req) => {
         priceSlug,
         successUrl,
         cancelUrl,
-        type: "subscription",
+        type: "product",
       }
     };
 
