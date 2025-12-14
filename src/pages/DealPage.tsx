@@ -21,9 +21,12 @@ import {
   X,
   Sparkles,
   Zap,
-  Save,
+  Send,
   Handshake,
-  Calculator
+  Calculator,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 
 interface DealTerms {
@@ -35,6 +38,11 @@ interface DealTerms {
   fundingStatus: string;
   shortfall: number;
   termSheet?: TermSheetTerms;
+  negotiationRound?: 'initial' | 'final';
+  finalAllocations?: InvestorAllocation[];
+  declinedInvestors?: any[];
+  counterOffer?: any;
+  totalEquityGiven?: number;
 }
 
 interface Deal {
@@ -60,14 +68,12 @@ const DealPage = () => {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [submittingCounter, setSubmittingCounter] = useState(false);
   const [currentTerms, setCurrentTerms] = useState<TermSheetTerms | null>(null);
   const [currentAllocations, setCurrentAllocations] = useState<InvestorAllocation[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [showDollarRain, setShowDollarRain] = useState(false);
   const [activeTab, setActiveTab] = useState('negotiate');
-
-  // No auth redirect - useAuth handles anonymous sign-in automatically
 
   useEffect(() => {
     if (dealId && user) {
@@ -112,65 +118,62 @@ const DealPage = () => {
     setHasChanges(true);
   };
 
-  const handleSaveChanges = async () => {
-    if (!deal) return;
+  const handleSubmitCounterOffer = async () => {
+    if (!deal || !session) return;
     
-    setSaving(true);
+    setSubmittingCounter(true);
     try {
-      // Calculate new totals from included allocations
-      const includedAllocations = currentAllocations.length > 0 
-        ? currentAllocations.filter(a => a.isIncluded)
-        : terms.allocations.filter(a => a.isIncluded !== false);
-      
-      const newTotalOffered = includedAllocations.reduce((sum, a) => sum + a.amount, 0);
-      
-      const updatedDealTerms = {
-        ...deal.deal_terms,
-        allocations: currentAllocations.length > 0 ? currentAllocations : deal.deal_terms.allocations,
-        totalOffered: newTotalOffered,
-        fundingStatus: newTotalOffered >= deal.deal_terms.askAmount ? 'fully_funded' : 'partially_funded',
-        shortfall: newTotalOffered < deal.deal_terms.askAmount ? deal.deal_terms.askAmount - newTotalOffered : 0,
-        ...(currentTerms && { termSheet: currentTerms }),
+      // Build counter-offer from current allocations
+      const allocationsToSubmit = currentAllocations.length > 0 
+        ? currentAllocations 
+        : terms.allocations;
+
+      const counterOffer = {
+        allocations: allocationsToSubmit,
+        totalOffered: allocationsToSubmit.filter(a => a.isIncluded).reduce((sum, a) => sum + a.amount, 0),
       };
 
-      const { error } = await supabase
-        .from('deals')
-        .update({ deal_terms: updatedDealTerms as any })
-        .eq('id', dealId);
-
-      if (error) throw error;
-
-      setDeal({ ...deal, deal_terms: updatedDealTerms });
-      setHasChanges(false);
-      
-      toast({
-        title: 'Changes Saved',
-        description: 'Your deal terms have been updated.',
+      const response = await supabase.functions.invoke('generate-counter-response', {
+        body: { dealId, counterOffer },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast({
+        title: 'Counter-Offer Submitted',
+        description: `Investors have responded. ${response.data.declinedCount || 0} declined.`,
+      });
+
+      // Refresh deal to get final offers
+      await fetchDeal();
+      setHasChanges(false);
     } catch (error) {
-      console.error('Error saving changes:', error);
+      console.error('Error submitting counter-offer:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save changes',
+        description: error instanceof Error ? error.message : 'Failed to submit counter-offer',
         variant: 'destructive',
       });
     } finally {
-      setSaving(false);
+      setSubmittingCounter(false);
     }
   };
 
   const handleAcceptDeal = async () => {
     if (!session) return;
     
-    // Save changes first if there are any
-    if (hasChanges) {
-      await handleSaveChanges();
-    }
-    
-    // Start the dollar rain animation
     setShowDollarRain(true);
-    
     setProcessing(true);
+    
     try {
       const response = await supabase.functions.invoke('create-deal-checkout', {
         body: { dealId },
@@ -179,7 +182,6 @@ const DealPage = () => {
         },
       });
 
-      // Check for errors in the response data (edge function error responses)
       if (response.error) {
         throw new Error(response.error.message);
       }
@@ -192,7 +194,6 @@ const DealPage = () => {
         throw new Error('No checkout URL received');
       }
 
-      // Redirect to Flowglad checkout
       console.log('Redirecting to Flowglad checkout:', response.data.url);
       window.location.href = response.data.url;
     } catch (error) {
@@ -254,7 +255,13 @@ const DealPage = () => {
   }
 
   const terms = deal.deal_terms;
-  const fundedPercentage = (terms.totalOffered / terms.askAmount) * 100;
+  const isFinalRound = terms.negotiationRound === 'final';
+  const displayAllocations = isFinalRound && terms.finalAllocations 
+    ? terms.finalAllocations 
+    : terms.allocations.filter(a => a.isIncluded !== false);
+  
+  const totalOffered = displayAllocations.reduce((sum, a) => sum + a.amount, 0);
+  const fundedPercentage = (totalOffered / terms.askAmount) * 100;
 
   return (
     <div className="min-h-screen bg-background">
@@ -273,17 +280,37 @@ const DealPage = () => {
           </Badge>
         </div>
 
+        {/* Negotiation Phase Badge */}
+        <div className="flex justify-center mb-6">
+          <Badge 
+            variant={isFinalRound ? "default" : "secondary"} 
+            className="px-4 py-2 text-sm"
+          >
+            {isFinalRound ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Final Offer from Investors
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Initial Offers - Negotiate & Submit Counter
+              </>
+            )}
+          </Badge>
+        </div>
+
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Deal Summary */}
           <div className="space-y-6">
             {/* Main Deal Card */}
-            <Card className="border-2 border-primary/30 bg-gradient-to-br from-card to-accent/10">
+            <Card className={`border-2 ${isFinalRound ? 'border-primary' : 'border-primary/30'} bg-gradient-to-br from-card to-accent/10`}>
               <CardHeader className="text-center pb-4">
                 <CardTitle className="text-2xl font-bold">
                   {deal.panel.pitch.startup_name || 'Your Startup'} Deal
                 </CardTitle>
                 <CardDescription>
-                  AI-Generated Investment Terms
+                  {isFinalRound ? 'Final Investment Terms' : 'AI-Generated Investment Terms'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -317,23 +344,37 @@ const DealPage = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Funding Progress</span>
                     <span className="font-medium">
-                      {formatCurrency(terms.totalOffered)} / {formatCurrency(terms.askAmount)}
+                      {formatCurrency(totalOffered)} / {formatCurrency(terms.askAmount)}
                     </span>
                   </div>
                   <Progress value={Math.min(fundedPercentage, 100)} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{fundedPercentage.toFixed(0)}% funded</span>
-                    <Badge variant={terms.fundingStatus === 'fully_funded' ? 'default' : 'secondary'} className="text-xs">
-                      {terms.fundingStatus === 'fully_funded' ? 'Fully Funded' : 'Partially Funded'}
+                    <Badge variant={fundedPercentage >= 100 ? 'default' : 'secondary'} className="text-xs">
+                      {fundedPercentage >= 100 ? 'Fully Funded' : 'Partially Funded'}
                     </Badge>
                   </div>
                 </div>
 
+                {/* Declined Investors (only show in final round) */}
+                {isFinalRound && terms.declinedInvestors && terms.declinedInvestors.length > 0 && (
+                  <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                    <p className="text-sm font-medium text-destructive mb-2">Declined to Participate:</p>
+                    {terms.declinedInvestors.map((inv: any, i: number) => (
+                      <div key={i} className="text-sm text-muted-foreground">
+                        <span className="font-medium">{inv.investor}</span>: "{inv.response}"
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Allocations */}
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">Investor Allocations</h3>
+                  <h3 className="text-sm font-semibold mb-3">
+                    {isFinalRound ? 'Final Investor Terms' : 'Investor Allocations'}
+                  </h3>
                   <div className="space-y-2">
-                    {terms.allocations.filter(a => a.isIncluded !== false).map((alloc, index) => (
+                    {displayAllocations.map((alloc, index) => (
                       <div 
                         key={index} 
                         className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
@@ -345,7 +386,21 @@ const DealPage = () => {
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{alloc.investor}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm">{alloc.investor}</p>
+                              {isFinalRound && (alloc as any).status && (
+                                <Badge 
+                                  variant={(alloc as any).status === 'accepted' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {(alloc as any).status === 'accepted' ? (
+                                    <><ThumbsUp className="w-3 h-3 mr-1" /> Accepted</>
+                                  ) : (
+                                    'Countered'
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{alloc.role}</p>
                           </div>
                         </div>
@@ -368,97 +423,161 @@ const DealPage = () => {
             {/* CTA Section */}
             <Card>
               <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground text-sm mb-4">
-                  One click can move {formatCurrency(terms.askAmount)}+ (test mode).
-                </p>
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={handleDeclineDeal}
-                    disabled={processing}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Decline
-                  </Button>
-                  <Button 
-                    className="flex-1"
-                    onClick={handleAcceptDeal}
-                    disabled={processing}
-                  >
-                    {processing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 mr-2" />
-                        Accept Investment
-                      </>
-                    )}
-                  </Button>
-                </div>
+                {isFinalRound ? (
+                  <>
+                    <p className="text-center text-muted-foreground text-sm mb-4">
+                      This is the final offer. Accept to proceed to payment.
+                    </p>
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={handleDeclineDeal}
+                        disabled={processing}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Decline
+                      </Button>
+                      <Button 
+                        className="flex-1"
+                        onClick={handleAcceptDeal}
+                        disabled={processing}
+                      >
+                        {processing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Accept Final Offer
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-center text-muted-foreground text-sm mb-4">
+                      Negotiate terms, then submit your counter-offer for investor response.
+                    </p>
+                    <Button 
+                      className="w-full"
+                      onClick={handleSubmitCounterOffer}
+                      disabled={submittingCounter}
+                    >
+                      {submittingCounter ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Investors Reviewing...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Submit Counter-Offer
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Right Column - Negotiation & Term Sheet */}
           <div className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="negotiate" className="flex items-center gap-2">
-                  <Handshake className="w-4 h-4" />
-                  Negotiate
-                </TabsTrigger>
-                <TabsTrigger value="termsheet" className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4" />
-                  Term Sheet
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="negotiate" className="mt-4">
-                <InvestorNegotiation
-                  allocations={terms.allocations.map(a => ({
-                    ...a,
-                    royaltyPercent: a.royaltyPercent ?? 0,
-                    isIncluded: a.isIncluded !== false
-                  }))}
-                  askAmount={terms.askAmount}
-                  totalEquity={terms.equityPercent}
-                  onAllocationsChange={handleAllocationsChange}
-                />
-              </TabsContent>
-              
-              <TabsContent value="termsheet" className="mt-4">
-                <TermSheet
-                  initialInvestment={terms.termSheet?.investmentAmount || terms.totalOffered}
-                  initialEquity={terms.termSheet?.equityPercent || terms.equityPercent}
-                  askAmount={terms.askAmount}
-                  onTermsChange={handleTermsChange}
-                />
-              </TabsContent>
-            </Tabs>
-            
-            {hasChanges && (
-              <Button 
-                onClick={handleSaveChanges} 
-                disabled={saving}
-                className="w-full"
-                variant="outline"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+            {!isFinalRound ? (
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="negotiate" className="flex items-center gap-2">
+                    <Handshake className="w-4 h-4" />
+                    Negotiate
+                  </TabsTrigger>
+                  <TabsTrigger value="termsheet" className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4" />
+                    Term Sheet
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="negotiate" className="mt-4">
+                  <InvestorNegotiation
+                    allocations={terms.allocations.map(a => ({
+                      ...a,
+                      royaltyPercent: a.royaltyPercent ?? 0,
+                      isIncluded: a.isIncluded !== false
+                    }))}
+                    askAmount={terms.askAmount}
+                    totalEquity={terms.equityPercent}
+                    onAllocationsChange={handleAllocationsChange}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="termsheet" className="mt-4">
+                  <TermSheet
+                    initialInvestment={terms.termSheet?.investmentAmount || terms.totalOffered}
+                    initialEquity={terms.termSheet?.equityPercent || terms.equityPercent}
+                    askAmount={terms.askAmount}
+                    onTermsChange={handleTermsChange}
+                  />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <Card className="border-2 border-primary/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-primary" />
+                    Final Investor Responses
+                  </CardTitle>
+                  <CardDescription>
+                    Investors have reviewed your counter-offer
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {terms.finalAllocations?.map((alloc, index) => (
+                    <div 
+                      key={index} 
+                      className="p-4 bg-muted/50 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-primary font-semibold text-sm">
+                              {alloc.investor.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-semibold">{alloc.investor}</p>
+                            <p className="text-xs text-muted-foreground">{alloc.role}</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant={(alloc as any).status === 'accepted' ? 'default' : 'secondary'}
+                        >
+                          {(alloc as any).status === 'accepted' ? 'Accepted' : 'Countered'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground italic mb-3">
+                        "{alloc.reason}"
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-background rounded">
+                          <p className="font-bold text-sm">{formatCurrency(alloc.amount)}</p>
+                          <p className="text-xs text-muted-foreground">Amount</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <p className="font-bold text-sm">{alloc.equityShare.toFixed(1)}%</p>
+                          <p className="text-xs text-muted-foreground">Equity</p>
+                        </div>
+                        <div className="p-2 bg-background rounded">
+                          <p className="font-bold text-sm">{alloc.royaltyPercent}%</p>
+                          <p className="text-xs text-muted-foreground">Royalty</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
