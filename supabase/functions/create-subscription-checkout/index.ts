@@ -48,12 +48,12 @@ serve(async (req) => {
       );
     }
 
-    // Get the appropriate price ID
-    const priceId = plan === 'plus' 
+    // Get the appropriate price slug
+    const priceSlug = plan === 'plus' 
       ? Deno.env.get("FLOWGLAD_PRICE_ID_PLUS")
       : Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
 
-    if (!priceId) {
+    if (!priceSlug) {
       console.error(`Missing FLOWGLAD_PRICE_ID_${plan.toUpperCase()}`);
       return new Response(
         JSON.stringify({ error: "Price configuration missing" }),
@@ -73,7 +73,7 @@ serve(async (req) => {
     const origin = Deno.env.get("APP_DOMAIN") || req.headers.get("origin") || "https://investor-panel.lovable.app";
 
     console.log("Creating subscription checkout for plan:", plan);
-    console.log("Using priceId:", priceId);
+    console.log("Using priceSlug:", priceSlug);
 
     // Create Flowglad checkout session
     const flowgladResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
@@ -84,7 +84,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         checkoutSession: {
-          priceId: priceId,
+          priceSlug: priceSlug,
           quantity: 1,
           successUrl: `${origin}/subscription/success?plan=${plan}`,
           cancelUrl: `${origin}/pricing`,
