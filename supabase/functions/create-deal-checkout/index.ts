@@ -73,7 +73,7 @@ serve(async (req) => {
     }
 
     // Use priceSlug per Flowglad API docs
-    const priceSlug = 'investor_panel_demo';
+    const priceSlug = 'investor_demo';
 
     const startupName = deal.panel.pitch.startup_name || 'Startup';
 
