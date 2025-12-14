@@ -28,21 +28,16 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
-    
-    if (!FLOWGLAD_SECRET_KEY) throw new Error('FLOWGLAD_SECRET_KEY not configured');
+    // Get billing status from local profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('plan, plan_status')
+      .eq('user_id', user.id)
+      .single();
 
-    // Fetch customer billing status from Flowglad
-    const flowgladResponse = await fetch(`https://api.flowglad.com/v1/customers/${user.id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // If customer doesn't exist yet, return inactive status
-    if (flowgladResponse.status === 404) {
+    if (profileError) {
+      console.log('Profile not found for user:', user.id, profileError);
+      // Return free status if no profile exists
       return new Response(JSON.stringify({ 
         isActive: false,
         plan: 'free',
@@ -53,43 +48,16 @@ serve(async (req) => {
       });
     }
 
-    if (!flowgladResponse.ok) {
-      const errorText = await flowgladResponse.text();
-      console.error('Flowglad API error:', flowgladResponse.status, errorText);
-      throw new Error(`Flowglad error: ${flowgladResponse.status}`);
-    }
-
-    const customer = await flowgladResponse.json();
-
-    // Check for active subscriptions
-    const subscriptionsResponse = await fetch(`https://api.flowglad.com/v1/subscriptions?customer_id=${user.id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    let subscriptions = [];
-    let isActive = false;
-    let plan = 'free';
-
-    if (subscriptionsResponse.ok) {
-      const subsData = await subscriptionsResponse.json();
-      subscriptions = subsData.data || [];
-      isActive = subscriptions.some((sub: any) => sub.status === 'active');
-      if (isActive) {
-        plan = 'pro';
-      }
-    }
+    const isActive = profile.plan_status === 'active' && profile.plan !== 'free';
+    const plan = profile.plan || 'free';
 
     console.log('Billing status fetched for user:', user.id, { isActive, plan });
 
     return new Response(JSON.stringify({ 
       isActive,
       plan,
-      customerId: customer.id,
-      subscriptions
+      customerId: user.id,
+      subscriptions: isActive ? [{ status: 'active', plan }] : []
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
