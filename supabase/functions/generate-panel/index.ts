@@ -103,10 +103,17 @@ Pitch: "${rawPitch}"`;
     try {
       // Try to extract JSON from markdown code blocks if present
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : content;
-      panelData = JSON.parse(jsonStr.trim());
+      let jsonStr = jsonMatch ? jsonMatch[1] : content;
+      
+      // Clean up common JSON issues
+      jsonStr = jsonStr.trim();
+      // Remove trailing commas before ] or }
+      jsonStr = jsonStr.replace(/,(\s*[\]}])/g, '$1');
+      
+      panelData = JSON.parse(jsonStr);
     } catch (e) {
       console.error('Failed to parse AI response:', content);
+      console.error('Parse error:', e);
       throw new Error('Invalid AI response format');
     }
 
