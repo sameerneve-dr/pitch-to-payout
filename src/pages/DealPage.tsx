@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import TermSheet, { TermSheetTerms } from '@/components/TermSheet';
+import InvestorNegotiation, { InvestorAllocation } from '@/components/InvestorNegotiation';
 import DollarRain from '@/components/DollarRain';
 import { 
   ArrowLeft, 
@@ -19,27 +21,19 @@ import {
   X,
   Sparkles,
   Zap,
-  Save
+  Save,
+  Handshake,
+  Calculator
 } from 'lucide-react';
-
-interface Allocation {
-  investor: string;
-  role: string;
-  amount: number;
-  percentageOfDeal: number;
-  equityShare: number;
-  reason: string;
-}
 
 interface DealTerms {
   askAmount: number;
   equityPercent: number;
   totalOffered: number;
   postMoneyValuation: number;
-  allocations: Allocation[];
+  allocations: InvestorAllocation[];
   fundingStatus: string;
   shortfall: number;
-  // Term sheet fields (persisted)
   termSheet?: TermSheetTerms;
 }
 
@@ -68,8 +62,10 @@ const DealPage = () => {
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentTerms, setCurrentTerms] = useState<TermSheetTerms | null>(null);
+  const [currentAllocations, setCurrentAllocations] = useState<InvestorAllocation[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [showDollarRain, setShowDollarRain] = useState(false);
+  const [activeTab, setActiveTab] = useState('negotiate');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -115,14 +111,30 @@ const DealPage = () => {
     setHasChanges(true);
   };
 
-  const handleSaveTerms = async () => {
-    if (!currentTerms || !deal) return;
+  const handleAllocationsChange = (allocations: InvestorAllocation[]) => {
+    setCurrentAllocations(allocations);
+    setHasChanges(true);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!deal) return;
     
     setSaving(true);
     try {
+      // Calculate new totals from included allocations
+      const includedAllocations = currentAllocations.length > 0 
+        ? currentAllocations.filter(a => a.isIncluded)
+        : terms.allocations.filter(a => a.isIncluded !== false);
+      
+      const newTotalOffered = includedAllocations.reduce((sum, a) => sum + a.amount, 0);
+      
       const updatedDealTerms = {
         ...deal.deal_terms,
-        termSheet: currentTerms,
+        allocations: currentAllocations.length > 0 ? currentAllocations : deal.deal_terms.allocations,
+        totalOffered: newTotalOffered,
+        fundingStatus: newTotalOffered >= deal.deal_terms.askAmount ? 'fully_funded' : 'partially_funded',
+        shortfall: newTotalOffered < deal.deal_terms.askAmount ? deal.deal_terms.askAmount - newTotalOffered : 0,
+        ...(currentTerms && { termSheet: currentTerms }),
       };
 
       const { error } = await supabase
@@ -136,14 +148,14 @@ const DealPage = () => {
       setHasChanges(false);
       
       toast({
-        title: 'Terms Saved',
-        description: 'Your term sheet has been updated.',
+        title: 'Changes Saved',
+        description: 'Your deal terms have been updated.',
       });
     } catch (error) {
-      console.error('Error saving terms:', error);
+      console.error('Error saving changes:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save terms',
+        description: 'Failed to save changes',
         variant: 'destructive',
       });
     } finally {
@@ -154,9 +166,9 @@ const DealPage = () => {
   const handleAcceptDeal = async () => {
     if (!session) return;
     
-    // Save terms first if there are changes
-    if (hasChanges && currentTerms) {
-      await handleSaveTerms();
+    // Save changes first if there are any
+    if (hasChanges) {
+      await handleSaveChanges();
     }
     
     // Start the dollar rain animation
@@ -317,7 +329,7 @@ const DealPage = () => {
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Investor Allocations</h3>
                   <div className="space-y-2">
-                    {terms.allocations.map((alloc, index) => (
+                    {terms.allocations.filter(a => a.isIncluded !== false).map((alloc, index) => (
                       <div 
                         key={index} 
                         className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
@@ -335,9 +347,12 @@ const DealPage = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-sm">{formatCurrency(alloc.amount)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {alloc.equityShare.toFixed(1)}%
-                          </p>
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            <span>{alloc.equityShare.toFixed(1)}% equity</span>
+                            {alloc.royaltyPercent > 0 && (
+                              <span className="text-chart-1">+{alloc.royaltyPercent}% royalty</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -384,18 +399,46 @@ const DealPage = () => {
             </Card>
           </div>
 
-          {/* Right Column - Term Sheet */}
+          {/* Right Column - Negotiation & Term Sheet */}
           <div className="space-y-4">
-            <TermSheet
-              initialInvestment={terms.termSheet?.investmentAmount || terms.totalOffered}
-              initialEquity={terms.termSheet?.equityPercent || terms.equityPercent}
-              askAmount={terms.askAmount}
-              onTermsChange={handleTermsChange}
-            />
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="negotiate" className="flex items-center gap-2">
+                  <Handshake className="w-4 h-4" />
+                  Negotiate
+                </TabsTrigger>
+                <TabsTrigger value="termsheet" className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4" />
+                  Term Sheet
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="negotiate" className="mt-4">
+                <InvestorNegotiation
+                  allocations={terms.allocations.map(a => ({
+                    ...a,
+                    royaltyPercent: a.royaltyPercent ?? 0,
+                    isIncluded: a.isIncluded !== false
+                  }))}
+                  askAmount={terms.askAmount}
+                  totalEquity={terms.equityPercent}
+                  onAllocationsChange={handleAllocationsChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="termsheet" className="mt-4">
+                <TermSheet
+                  initialInvestment={terms.termSheet?.investmentAmount || terms.totalOffered}
+                  initialEquity={terms.termSheet?.equityPercent || terms.equityPercent}
+                  askAmount={terms.askAmount}
+                  onTermsChange={handleTermsChange}
+                />
+              </TabsContent>
+            </Tabs>
             
             {hasChanges && (
               <Button 
-                onClick={handleSaveTerms} 
+                onClick={handleSaveChanges} 
                 disabled={saving}
                 className="w-full"
                 variant="outline"
@@ -408,7 +451,7 @@ const DealPage = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save Term Sheet
+                    Save Changes
                   </>
                 )}
               </Button>
