@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Trash2, Crown, Zap } from 'lucide-react';
+import { Loader2, Trash2, Crown, Zap, Pencil, Check, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import AvatarUpload from '@/components/AvatarUpload';
 import {
@@ -24,6 +27,15 @@ const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const { profile, resetDemoData, loading, refetch } = useProfile();
   const [resetting, setResetting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    if (profile?.name) {
+      setEditName(profile.name);
+    }
+  }, [profile?.name]);
 
   const handleResetDemoData = async () => {
     setResetting(true);
@@ -34,6 +46,34 @@ const SettingsPage = () => {
       toast.success('Demo data reset successfully');
     }
     setResetting(false);
+  };
+
+  const handleSaveName = async () => {
+    if (!user || !editName.trim()) return;
+    
+    setSavingName(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ name: editName.trim() })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await refetch();
+      setIsEditingName(false);
+      toast.success('Name updated!');
+    } catch (error) {
+      console.error('Error updating name:', error);
+      toast.error('Failed to update name');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditName(profile?.name || '');
+    setIsEditingName(false);
   };
 
   const handleSignOut = async () => {
@@ -89,9 +129,51 @@ const SettingsPage = () => {
               <CardDescription>Your account information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-medium">{profile?.name || 'Not set'}</p>
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Name</Label>
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Your name"
+                      className="max-w-xs"
+                      disabled={savingName}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleSaveName}
+                      disabled={savingName || !editName.trim()}
+                    >
+                      {savingName ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleCancelEdit}
+                      disabled={savingName}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{profile?.name || 'Not set'}</p>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setIsEditingName(true)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
