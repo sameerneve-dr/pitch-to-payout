@@ -59,7 +59,8 @@ serve(async (req) => {
       throw new Error('Unauthorized: You do not own this deal');
     }
 
-    const APP_DOMAIN = Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
+    // Get origin from request headers for proper redirect
+    const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
 
     // Update deal status to paid (demo mode - skip actual payment)
     await supabase
@@ -68,9 +69,10 @@ serve(async (req) => {
       .eq('id', dealId);
 
     console.log('Demo mode: Deal accepted and marked as paid:', dealId);
+    console.log('Redirect URL origin:', origin);
 
     // For demo mode, redirect directly to success page
-    const successUrl = `${APP_DOMAIN}/success?deal_id=${dealId}`;
+    const successUrl = `${origin}/success?deal_id=${dealId}`;
 
     return new Response(JSON.stringify({ url: successUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
