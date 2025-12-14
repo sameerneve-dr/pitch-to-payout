@@ -197,7 +197,7 @@ const PlansPage = () => {
         </div>
 
         <p className="text-center text-muted-foreground text-sm mt-8">
-          Use test card: 4242 4242 4242 4242, any future date, any CVC
+          Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
         </p>
 
         {!user && (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,7 @@ interface Deal {
 const DealPage = () => {
   const { dealId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, session, loading: authLoading } = useAuth();
 
@@ -80,6 +81,15 @@ const DealPage = () => {
       fetchDeal();
     }
   }, [dealId, user]);
+
+  useEffect(() => {
+    if (searchParams.get('status') === 'cancel') {
+      toast({
+        title: 'Payment cancelled',
+        description: 'No charges were made. You can review the deal and try again.',
+      });
+    }
+  }, [searchParams, toast]);
 
   const fetchDeal = async () => {
     try {
@@ -169,30 +179,41 @@ const DealPage = () => {
   };
 
   const handleAcceptDeal = async () => {
-    if (!session || !deal) return;
+    if (!session || !dealId) return;
     
     setShowDollarRain(true);
     setProcessing(true);
     
     try {
-      // Demo mode: mark deal as paid directly and go to dashboard
-      await supabase
-        .from('deals')
-        .update({ status: 'paid' })
-        .eq('id', dealId);
-
-      toast({
-        title: 'Deal Accepted!',
-        description: 'Congratulations on your funding!',
+      const { data, error } = await supabase.functions.invoke('create-deal-checkout', {
+        body: { dealId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      navigate('/app');
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const checkoutUrl = (data as any)?.url || (data as any)?.checkout_url;
+
+      if (!checkoutUrl) {
+        throw new Error('No checkout URL returned from payment system.');
+      }
+
+      toast({
+        title: 'Redirecting to checkout',
+        description: 'Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.',
+      });
+
+      window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Error accepting deal:', error);
       setShowDollarRain(false);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to accept deal. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to start checkout. Please try again.',
         variant: 'destructive',
       });
       setProcessing(false);
@@ -419,33 +440,38 @@ const DealPage = () => {
                     <p className="text-center text-muted-foreground text-sm mb-4">
                       This is the final offer. Accept to proceed to payment.
                     </p>
-                    <div className="flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={handleDeclineDeal}
-                        disabled={processing}
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Decline
-                      </Button>
-                      <Button 
-                        className="flex-1"
-                        onClick={handleAcceptDeal}
-                        disabled={processing}
-                      >
-                        {processing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Accept Final Offer
-                          </>
-                        )}
-                      </Button>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={handleDeclineDeal}
+                          disabled={processing}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Decline
+                        </Button>
+                        <Button 
+                          className="flex-1"
+                          onClick={handleAcceptDeal}
+                          disabled={processing}
+                        >
+                          {processing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-4 h-4 mr-2" />
+                              Accept Final Offer
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
+                      </p>
                     </div>
                   </>
                 ) : (

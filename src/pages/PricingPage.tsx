@@ -215,9 +215,13 @@ const PricingPage = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
+         </div>
 
-        {!user && (
+         <p className="text-center text-muted-foreground text-sm mt-6">
+           Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
+         </p>
+
+         {!user && (
           <div className="text-center mt-12">
             <p className="text-muted-foreground mb-4">
               Already have an account?{' '}

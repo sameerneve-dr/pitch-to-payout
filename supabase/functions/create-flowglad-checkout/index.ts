@@ -34,6 +34,16 @@ serve(async (req) => {
     if (!FLOWGLAD_SECRET_KEY) throw new Error('FLOWGLAD_SECRET_KEY not configured');
     if (!FLOWGLAD_PRICE_ID) throw new Error('FLOWGLAD_PRICE_ID not configured');
 
+    const isTestKey = FLOWGLAD_SECRET_KEY.toLowerCase().includes('test');
+    const environment = isTestKey ? 'test' : 'live';
+
+    console.log('Flowglad environment:', environment);
+    console.log('Selected Flowglad priceId:', FLOWGLAD_PRICE_ID);
+
+    if (!isTestKey) {
+      throw new Error('Payment system is configured for LIVE mode. This demo only supports TEST mode.');
+    }
+
     // Get origin from request headers for proper redirect
     const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://60d2fa4c-076f-437b-95af-266b577faa03.lovableproject.com';
 

@@ -66,14 +66,29 @@ serve(async (req) => {
     }
 
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
-
+    const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
+    
     if (!FLOWGLAD_SECRET_KEY) {
       console.error('Missing FLOWGLAD_SECRET_KEY');
       throw new Error('Payment system not configured. Please set FLOWGLAD_SECRET_KEY.');
     }
 
-    // Use priceSlug instead of priceId
-    const priceSlug = 'investor_panel_demo';
+    if (!FLOWGLAD_PRICE_ID) {
+      console.error('Missing FLOWGLAD_PRICE_ID');
+      throw new Error('Payment price not configured. Please set FLOWGLAD_PRICE_ID.');
+    }
+
+    const isTestKey = FLOWGLAD_SECRET_KEY.toLowerCase().includes('test');
+    const environment = isTestKey ? 'test' : 'live';
+
+    console.log('Flowglad environment:', environment);
+    console.log('Selected Flowglad priceId:', FLOWGLAD_PRICE_ID);
+
+    if (!isTestKey) {
+      throw new Error('Payment system is configured for LIVE mode. This demo only supports TEST mode.');
+    }
+
+    const priceId = FLOWGLAD_PRICE_ID;
 
     // Build customer data
     const customerExternalId = user.id;
@@ -81,12 +96,12 @@ serve(async (req) => {
 
     console.log('Creating checkout for deal:', dealId);
     console.log('Customer externalId:', customerExternalId);
-    console.log('Using priceSlug:', priceSlug);
+    console.log('Using priceId:', priceId);
     console.log('APP_DOMAIN:', appDomain);
 
-    // Simple absolute URLs
-    const successUrl = `${appDomain}/success?source=deal&deal_id=${dealId}`;
-    const cancelUrl = `${appDomain}/plans`;
+    // Return to checkout handler on success, back to deal on cancel
+    const successUrl = `${appDomain}/checkout/return?source=deal&dealId=${dealId}&status=success`;
+    const cancelUrl = `${appDomain}/deal/${dealId}?status=cancel`;
 
     console.log('=== FLOWGLAD URLs ===');
     console.log('APP_DOMAIN:', appDomain);
@@ -98,7 +113,7 @@ serve(async (req) => {
     const checkoutPayload = {
       checkoutSession: {
         customerExternalId,
-        priceSlug,
+        priceId,
         successUrl,
         cancelUrl,
         type: 'product',

@@ -144,6 +144,9 @@ const BillingPage = () => {
                   </>
                 )}
               </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
+              </p>
             </CardContent>
           </Card>
         )}
