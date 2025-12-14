@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Loader2, Sparkles } from 'lucide-react';
+import { Check, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Confetti from '@/components/Confetti';
 
@@ -11,48 +11,56 @@ const SubscriptionSuccessPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const plan = searchParams.get('plan') || 'plus';
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const activatePlan = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          toast.error('Please log in to continue');
-          navigate('/login');
-          return;
-        }
-
-        // Update user's plan
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            plan: plan as 'plus' | 'pro',
-            plan_status: 'active'
-          })
-          .eq('user_id', user.id);
-
-        if (error) {
-          console.error('Error activating plan:', error);
-          toast.error('Failed to activate plan');
-        } else {
-          setShowConfetti(true);
-          toast.success(`${plan.charAt(0).toUpperCase() + plan.slice(1)} plan activated!`);
-          
-          // Seed demo data for the user
-          await seedDemoData(user.id);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     activatePlan();
   }, [plan, navigate]);
+
+  const activatePlan = async () => {
+    try {
+      setStatus('verifying');
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('Please log in to continue');
+        navigate('/login');
+        return;
+      }
+
+      // Update user's plan
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ 
+          user_id: user.id,
+          plan: plan as 'plus' | 'pro',
+          plan_status: 'active',
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      if (error) {
+        console.error('Error activating plan:', error);
+        throw new Error('Failed to activate plan');
+      }
+      
+      setShowConfetti(true);
+      setStatus('success');
+      toast.success(`${plan.charAt(0).toUpperCase() + plan.slice(1)} plan activated!`);
+      
+      // Seed demo data for the user
+      await seedDemoData(user.id);
+      
+    } catch (err) {
+      console.error('Error:', err);
+      setStatus('error');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to activate subscription');
+    }
+  };
 
   const seedDemoData = async (userId: string) => {
     // Check if user already has pitches
@@ -107,10 +115,46 @@ const SubscriptionSuccessPage = () => {
     }
   };
 
-  if (loading) {
+  if (status === 'verifying') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Verifying Payment...</CardTitle>
+            <CardDescription>
+              Please wait while we confirm your subscription.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl">Activation Failed</CardTitle>
+            <CardDescription className="text-destructive">
+              {errorMessage || 'We could not activate your subscription. Please try again.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button onClick={activatePlan} className="w-full">
+              Try Again
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/plans')} className="w-full">
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -125,10 +169,10 @@ const SubscriptionSuccessPage = () => {
           </div>
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
             <Sparkles className="w-6 h-6 text-primary" />
-            Welcome to {plan.charAt(0).toUpperCase() + plan.slice(1)}!
+            Payment Verified ✅
           </CardTitle>
           <CardDescription>
-            Your subscription is now active
+            Welcome to {plan.charAt(0).toUpperCase() + plan.slice(1)}!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

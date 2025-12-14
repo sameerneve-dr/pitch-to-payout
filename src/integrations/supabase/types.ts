@@ -123,6 +123,27 @@ export type Database = {
           },
         ]
       }
+      payment_events: {
+        Row: {
+          event_data: Json | null
+          event_type: string
+          id: string
+          received_at: string
+        }
+        Insert: {
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          received_at?: string
+        }
+        Update: {
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       pitches: {
         Row: {
           arr: number | null

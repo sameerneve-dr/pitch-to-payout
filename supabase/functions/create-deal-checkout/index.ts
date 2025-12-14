@@ -59,7 +59,11 @@ serve(async (req) => {
       throw new Error('Unauthorized: You do not own this deal');
     }
 
-    const origin = req.headers.get('origin') || Deno.env.get('APP_DOMAIN') || 'https://investor-panel.lovable.app';
+    const appDomain = Deno.env.get('APP_DOMAIN');
+    if (!appDomain) {
+      console.error('Missing APP_DOMAIN environment variable');
+      throw new Error('Server configuration error');
+    }
 
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
 
@@ -78,20 +82,28 @@ serve(async (req) => {
     console.log('Creating checkout for deal:', dealId);
     console.log('Customer externalId:', customerExternalId);
     console.log('Using priceSlug:', priceSlug);
+    console.log('APP_DOMAIN:', appDomain);
+
+    const successUrl = `${appDomain}/success?source=deal&deal_id=${dealId}`;
+    const cancelUrl = `${appDomain}/deal/${dealId}`;
+
+    console.log('Success URL:', successUrl);
+    console.log('Cancel URL:', cancelUrl);
 
     // Create checkout session using customerExternalId and priceSlug per Flowglad docs
     const checkoutPayload = {
       checkoutSession: {
         customerExternalId,
         priceSlug,
-        successUrl: `${origin}/success?deal_id=${dealId}`,
-        cancelUrl: `${origin}/deal/${dealId}`,
+        successUrl,
+        cancelUrl,
         type: 'product',
         outputName: `Investment in ${startupName}`,
         outputMetadata: {
           deal_id: dealId,
           user_id: user.id,
           startup_name: startupName,
+          source: 'deal',
         },
       },
     };
@@ -112,7 +124,7 @@ serve(async (req) => {
     console.log('Checkout response:', checkoutText);
 
     if (!checkoutResponse.ok) {
-      console.error('Checkout API error:', checkoutText);
+      console.error('Checkout API error:', JSON.stringify(checkoutText));
       throw new Error(`Payment checkout failed: ${checkoutText}`);
     }
 
@@ -125,10 +137,14 @@ serve(async (req) => {
     }
 
     const checkoutUrl = checkoutData?.checkoutSession?.url || checkoutData?.url;
+    const sessionId = checkoutData?.checkoutSession?.id || checkoutData?.id;
+    
     if (!checkoutUrl) {
-      console.error('No checkout URL in response:', checkoutData);
+      console.error('No checkout URL in response:', JSON.stringify(checkoutData));
       throw new Error('No checkout URL received from payment system');
     }
+
+    console.log('Checkout URL:', checkoutUrl, 'Session ID:', sessionId);
 
     // Update deal status
     await supabase
@@ -136,12 +152,16 @@ serve(async (req) => {
       .update({ 
         status: 'accepted',
         checkout_url: checkoutUrl,
+        flowglad_reference: sessionId,
       })
       .eq('id', dealId);
 
-    console.log('Checkout created for deal:', dealId);
+    console.log('Checkout created for deal:', dealId, 'Session ID:', sessionId);
 
-    return new Response(JSON.stringify({ url: checkoutUrl }), {
+    return new Response(JSON.stringify({ 
+      url: checkoutUrl,
+      session_id: sessionId,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
