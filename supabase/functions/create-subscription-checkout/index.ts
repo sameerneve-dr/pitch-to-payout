@@ -98,18 +98,22 @@ serve(async (req) => {
 
     const customerText = await customerResponse.text();
     console.log("Customer creation status:", customerResponse.status);
+    console.log("Customer response:", customerText.substring(0, 500));
 
     let customerId: string | undefined;
 
     // Handle various response codes
     if (customerResponse.status === 200 || customerResponse.status === 201) {
       const customerData = JSON.parse(customerText);
-      const createdCustomer = customerData?.data?.customer || customerData?.customer;
-      customerId = createdCustomer?.id;
-      console.log("Customer created, id present:", !!customerId);
+      // Try multiple possible response structures
+      customerId = customerData?.data?.customer?.id 
+        || customerData?.customer?.id 
+        || customerData?.data?.id 
+        || customerData?.id;
+      console.log("Customer created, extracted id:", customerId);
     } else if (customerResponse.status === 409) {
       // Customer already exists, fetch by externalId
-      console.log("Customer already exists, fetching...");
+      console.log("Customer already exists, fetching by externalId...");
       const getResponse = await fetch(`https://app.flowglad.com/api/v1/customers?externalId=${encodeURIComponent(externalId)}`, {
         headers: {
           "Authorization": `Bearer ${flowgladSecretKey}`,
@@ -117,16 +121,21 @@ serve(async (req) => {
         },
       });
       
+      const getResponseText = await getResponse.text();
+      console.log("Get customer response:", getResponseText.substring(0, 500));
+      
       if (getResponse.ok) {
-        const getData = await getResponse.json();
-        const firstCustomer = getData?.data?.[0] || getData?.customer || getData?.customers?.[0];
-        customerId = firstCustomer?.id;
-        console.log("Fetched existing customer id present:", !!customerId);
+        const getData = JSON.parse(getResponseText);
+        customerId = getData?.data?.[0]?.id 
+          || getData?.customers?.[0]?.id 
+          || getData?.customer?.id
+          || getData?.data?.customer?.id;
+        console.log("Fetched existing customer id:", customerId);
       } else {
-        console.error("Fetching existing customer failed with status:", getResponse.status);
+        console.error("Failed to fetch existing customer");
       }
     } else {
-      console.error("Customer creation failed with status:", customerResponse.status);
+      console.error("Customer creation failed with status:", customerResponse.status, customerText);
     }
 
     if (!customerId) {
