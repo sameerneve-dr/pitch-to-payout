@@ -179,20 +179,28 @@ const DealPage = () => {
         },
       });
 
+      // Check for errors in the response data (edge function error responses)
       if (response.error) {
         throw new Error(response.error.message);
       }
+      
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
 
-      // Keep the animation running for a moment before redirect
-      setTimeout(() => {
-        window.location.href = response.data.url;
-      }, 1500);
+      if (!response.data?.url) {
+        throw new Error('No checkout URL received');
+      }
+
+      // Redirect to Flowglad checkout
+      console.log('Redirecting to Flowglad checkout:', response.data.url);
+      window.location.href = response.data.url;
     } catch (error) {
       console.error('Error creating checkout:', error);
       setShowDollarRain(false);
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create checkout',
+        title: 'Checkout Failed',
+        description: error instanceof Error ? error.message : 'Failed to create checkout. Please try again.',
         variant: 'destructive',
       });
       setProcessing(false);
