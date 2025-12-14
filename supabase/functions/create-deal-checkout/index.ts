@@ -84,8 +84,8 @@ serve(async (req) => {
     console.log('Using priceSlug:', priceSlug);
     console.log('APP_DOMAIN:', appDomain);
 
-    const successUrl = `${appDomain}/success?source=deal&deal_id=${dealId}`;
-    const cancelUrl = `${appDomain}/deal/${dealId}`;
+    const successUrl = `${appDomain}/checkout/return?source=deal&id=${dealId}&status=success`;
+    const cancelUrl = `${appDomain}/checkout/return?source=deal&id=${dealId}&status=cancel`;
 
     console.log('Success URL:', successUrl);
     console.log('Cancel URL:', cancelUrl);
