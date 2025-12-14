@@ -280,6 +280,21 @@ const SubscriptionCheckoutPage = () => {
                   <span>Demo mode • No real charges</span>
                 </div>
               </form>
+
+              {/* Demo skip button */}
+              <div className="mt-6 pt-6 border-t border-border text-center">
+                <p className="text-muted-foreground text-sm mb-3">For demo purposes:</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    toast.success('Demo payment successful!');
+                    navigate('/app');
+                  }}
+                  className="text-muted-foreground"
+                >
+                  Skip Payment → Go to Dashboard
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
