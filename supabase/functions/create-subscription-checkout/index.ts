@@ -88,7 +88,7 @@ serve(async (req) => {
           quantity: 1,
           successUrl: `${origin}/subscription/success?plan=${plan}`,
           cancelUrl: `${origin}/pricing`,
-          type: 'subscription',
+          type: 'product',
           anonymous: true,
           outputName: `Investor Panel ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
           outputMetadata: {
