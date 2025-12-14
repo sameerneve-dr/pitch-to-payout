@@ -33,22 +33,33 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-    // Build investor context if demo investors provided
-    const investorContext = demoInvestors && demoInvestors.length > 0
-      ? `\n\nUse these REAL investors for the panel (use their exact names and roles, but generate appropriate questions and offers based on their thesis and risk appetite):\n${demoInvestors.map((inv: any) => `- ${inv.name} (${inv.role}): Thesis: "${inv.thesis}", Risk: ${inv.riskAppetite}`).join('\n')}`
-      : '';
-
-    const personaCount = demoInvestors?.length || 4;
+    // If demo investors provided, use them; otherwise fetch from database and let AI pick
+    let investorContext = '';
+    let personaCount = 5;
+    
+    if (demoInvestors && demoInvestors.length > 0) {
+      personaCount = demoInvestors.length;
+      investorContext = `\n\nUse these REAL investors for the panel (use their exact names and roles, generate appropriate questions and offers based on their background and risk appetite):\n${demoInvestors.map((inv: any) => `- ${inv.name} (${inv.role}): Thesis: "${inv.thesis}", Risk: ${inv.riskAppetite}`).join('\n')}`;
+    } else {
+      // Fetch all investors from database
+      const { data: allInvestors } = await supabase
+        .from('investors')
+        .select('name, job_title, investor_type, risk_tolerance, investment_thesis');
+      
+      if (allInvestors && allInvestors.length > 0) {
+        investorContext = `\n\nSelect the 5 MOST RELEVANT investors from this list based on the startup's domain, stage, and industry fit. Use their exact names and real backgrounds:\n${allInvestors.map((inv: any) => `- ${inv.name} (${inv.job_title || inv.investor_type}): Type: ${inv.investor_type}, Risk: ${inv.risk_tolerance || 'Medium'}${inv.investment_thesis ? `, Thesis: "${inv.investment_thesis}"` : ''}`).join('\n')}\n\nChoose investors whose backgrounds align with this startup's industry (e.g., fintech founders for fintech, climate investors for climate, logistics experts for logistics, etc.).`;
+      }
+    }
 
     const systemPrompt = `You are an AI that generates investor personas for a Shark Tank-style funding panel.
 
 Given a startup pitch, generate exactly ${personaCount} investor personas. Each persona should have:
-- name: A realistic investor name
-- role: One of "Angel Investor", "VC Partner", "CEO-Operator", "Shark"
+- name: The investor's real name (from the provided list)
+- role: Their actual job title or investor type
 - thesis: A one-liner investment thesis (what they look for)
 - riskAppetite: "Low", "Medium", or "High"
 - questions: Array of 1-2 sharp, relevant questions about the business (traction, GTM, moat, churn, CAC, competition)
-- riskNote: 1-2 sentence risk assessment
+- riskNote: 1-2 sentence risk assessment from their perspective
 - offerAmount: A number (can be 0 if they pass, otherwise a portion of the ask)
 - offerReason: 1-2 sentence reason for their offer
 

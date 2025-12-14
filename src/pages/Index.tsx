@@ -38,6 +38,9 @@ const Index = () => {
               <>
                 {user ? (
                   <>
+                    <Link to="/demo">
+                      <Button variant="ghost" size="sm">Demo</Button>
+                    </Link>
                     <Link to="/history">
                       <Button variant="ghost" size="sm">History</Button>
                     </Link>
@@ -49,9 +52,14 @@ const Index = () => {
                     </Link>
                   </>
                 ) : (
-                  <Link to="/auth">
-                    <Button size="sm">Sign In</Button>
-                  </Link>
+                  <>
+                    <Link to="/demo">
+                      <Button variant="ghost" size="sm">Demo</Button>
+                    </Link>
+                    <Link to="/auth">
+                      <Button size="sm">Sign In</Button>
+                    </Link>
+                  </>
                 )}
               </>
             )}
@@ -89,7 +97,7 @@ const Index = () => {
             <Button 
               variant="outline" 
               size="lg"
-              onClick={() => navigate('/new?sample=true')}
+              onClick={() => navigate('/demo')}
               className="text-lg px-8"
             >
               Try Sample Pitch
