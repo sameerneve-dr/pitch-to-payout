@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
-  ArrowLeft, 
   Loader2, 
   CreditCard, 
   Check, 
@@ -16,6 +15,7 @@ import {
   Waves,
   AlertTriangle
 } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 const PLANS = {
   plus: {
@@ -151,10 +151,7 @@ const SubscriptionCheckoutPage = () => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
-        <Link to="/plans" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Plans
-        </Link>
+        <PageHeader backTo="/plans" backLabel="Back to Plans" />
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Order Summary */}

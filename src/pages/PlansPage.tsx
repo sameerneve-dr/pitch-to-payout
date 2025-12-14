@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Waves, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Waves, Check, Loader2 } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 const PlansPage = () => {
   const navigate = useNavigate();
@@ -118,10 +119,7 @@ const PlansPage = () => {
   return (
     <div className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-5xl mx-auto">
-        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Link>
+        <PageHeader />
 
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
