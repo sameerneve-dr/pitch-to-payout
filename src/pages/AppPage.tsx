@@ -59,7 +59,7 @@ const AppPage = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[var(--neon-primary)]">
               <Zap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">Investor Panel</span>
+            <span className="text-xl font-bold text-foreground">SharkBank</span>
             <Badge variant="secondary" className="ml-2 capitalize">
               <Crown className="w-3 h-3 mr-1" />
               {plan}
