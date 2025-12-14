@@ -54,11 +54,7 @@ const PanelPage = () => {
   const [loading, setLoading] = useState(true);
   const [generatingDeal, setGeneratingDeal] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
+  // No auth redirect - useAuth handles anonymous sign-in automatically
 
   useEffect(() => {
     if (panelId && user) {

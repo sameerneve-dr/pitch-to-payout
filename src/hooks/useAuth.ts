@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const signingIn = useRef(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -21,22 +22,27 @@ export function useAuth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      
+      // Auto sign in anonymously if no session exists
+      if (!session && !signingIn.current) {
+        signingIn.current = true;
+        signInAnonymously().finally(() => {
+          signingIn.current = false;
+        });
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithMagicLink = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    return { error };
+  const signInAnonymously = async () => {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      console.error('Anonymous sign-in failed:', error.message);
+    }
+    return { data, error };
   };
 
   const signOut = async () => {
@@ -44,5 +50,5 @@ export function useAuth() {
     return { error };
   };
 
-  return { user, session, loading, signInWithMagicLink, signOut };
+  return { user, session, loading, signInAnonymously, signOut };
 }

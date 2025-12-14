@@ -67,11 +67,7 @@ const DealPage = () => {
   const [showDollarRain, setShowDollarRain] = useState(false);
   const [activeTab, setActiveTab] = useState('negotiate');
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
+  // No auth redirect - useAuth handles anonymous sign-in automatically
 
   useEffect(() => {
     if (dealId && user) {

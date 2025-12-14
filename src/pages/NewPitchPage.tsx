@@ -28,11 +28,7 @@ const NewPitchPage = () => {
   const [equityPercent, setEquityPercent] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
+  // No auth redirect - useAuth handles anonymous sign-in automatically
 
   useEffect(() => {
     if (searchParams.get('sample') === 'true') {
