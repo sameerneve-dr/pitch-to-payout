@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Waves, Check, ArrowLeft, Loader2 } from 'lucide-react';
 
 const PlansPage = () => {
@@ -21,12 +23,36 @@ const PlansPage = () => {
     navigate('/app');
   };
 
-  const handleSubscribe = (plan: 'plus' | 'pro') => {
-    if (!user) {
+  const handleSubscribe = async (plan: 'plus' | 'pro') => {
+    if (!user || !session) {
       navigate('/signup');
       return;
     }
-    navigate(`/subscription-checkout?plan=${plan}`);
+
+    setSubscribing(plan);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
+        body: { plan },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      const checkoutUrl = data?.checkout_url || data?.url;
+      if (!checkoutUrl) {
+        throw new Error('No checkout URL returned');
+      }
+
+      // Redirect to Flowglad checkout
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      toast.error('Failed to start checkout. Please try again.');
+      setSubscribing(null);
+    }
   };
 
   if (authLoading || billingLoading) {
