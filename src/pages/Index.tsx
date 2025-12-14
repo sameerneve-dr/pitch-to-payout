@@ -9,7 +9,8 @@ import {
   ArrowRight,
   Sparkles,
   TrendingUp,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 
 const Index = () => {
@@ -35,7 +36,7 @@ const Index = () => {
           <nav className="flex items-center gap-4">
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
               <Sparkles className="w-3 h-3 mr-1" />
-              Demo Mode – No Login Required
+              Demo Mode
             </Badge>
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -47,9 +48,23 @@ const Index = () => {
                 <Link to="/history">
                   <Button variant="ghost" size="sm">History</Button>
                 </Link>
-                <Link to="/new">
-                  <Button size="sm">New Pitch</Button>
+                <Link to="/pricing">
+                  <Button variant="ghost" size="sm">Pricing</Button>
                 </Link>
+                <Link to="/settings">
+                  <Button variant="ghost" size="icon">
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
+                {user?.is_anonymous ? (
+                  <Link to="/signup">
+                    <Button size="sm">Sign Up</Button>
+                  </Link>
+                ) : (
+                  <Link to="/new">
+                    <Button size="sm">New Pitch</Button>
+                  </Link>
+                )}
               </>
             )}
           </nav>
