@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import TermSheet, { TermSheetTerms } from '@/components/TermSheet';
+import DollarRain from '@/components/DollarRain';
 import { 
   ArrowLeft, 
   Loader2, 
@@ -68,6 +69,7 @@ const DealPage = () => {
   const [saving, setSaving] = useState(false);
   const [currentTerms, setCurrentTerms] = useState<TermSheetTerms | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showDollarRain, setShowDollarRain] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -157,6 +159,9 @@ const DealPage = () => {
       await handleSaveTerms();
     }
     
+    // Start the dollar rain animation
+    setShowDollarRain(true);
+    
     setProcessing(true);
     try {
       const response = await supabase.functions.invoke('create-deal-checkout', {
@@ -170,9 +175,13 @@ const DealPage = () => {
         throw new Error(response.error.message);
       }
 
-      window.location.href = response.data.url;
+      // Keep the animation running for a moment before redirect
+      setTimeout(() => {
+        window.location.href = response.data.url;
+      }, 1500);
     } catch (error) {
       console.error('Error creating checkout:', error);
+      setShowDollarRain(false);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to create checkout',
@@ -233,6 +242,7 @@ const DealPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <DollarRain active={showDollarRain} />
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <Link to={`/panel/${deal.panel_id}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
