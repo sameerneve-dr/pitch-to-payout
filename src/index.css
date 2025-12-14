@@ -5,57 +5,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. Sage green background with black cards and neon highlights. */
+/* Definition of the design system. Ocean-themed with deep blue background and aqua highlights. */
 
 @layer base {
   :root {
-    /* Sage green background theme */
-    --background: 140 20% 18%;
-    --foreground: 140 10% 95%;
+    /* Deep ocean background theme */
+    --background: 210 50% 12%;
+    --foreground: 200 20% 95%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 140 10% 95%;
+    --card: 210 45% 8%;
+    --card-foreground: 200 20% 95%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 140 10% 95%;
+    --popover: 210 45% 10%;
+    --popover-foreground: 200 20% 95%;
 
-    --primary: 140 60% 50%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 185 80% 45%;
+    --primary-foreground: 210 50% 5%;
 
-    --secondary: 160 40% 35%;
-    --secondary-foreground: 140 10% 95%;
+    --secondary: 200 60% 35%;
+    --secondary-foreground: 200 20% 95%;
 
-    --muted: 140 15% 25%;
-    --muted-foreground: 140 10% 60%;
+    --muted: 210 30% 20%;
+    --muted-foreground: 200 15% 60%;
 
-    --accent: 80 50% 50%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 165 70% 45%;
+    --accent-foreground: 210 50% 5%;
 
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 140 20% 25%;
-    --input: 140 20% 25%;
-    --ring: 140 60% 50%;
+    --border: 210 35% 22%;
+    --input: 210 35% 22%;
+    --ring: 185 80% 45%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 140 10% 95%;
-    --sidebar-primary: 140 60% 50%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 140 15% 25%;
-    --sidebar-accent-foreground: 140 10% 95%;
-    --sidebar-border: 140 20% 25%;
-    --sidebar-ring: 140 60% 50%;
+    --sidebar-background: 210 45% 8%;
+    --sidebar-foreground: 200 20% 95%;
+    --sidebar-primary: 185 80% 45%;
+    --sidebar-primary-foreground: 210 50% 5%;
+    --sidebar-accent: 210 30% 20%;
+    --sidebar-accent-foreground: 200 20% 95%;
+    --sidebar-border: 210 35% 22%;
+    --sidebar-ring: 185 80% 45%;
 
-    --chart-1: 140 60% 50%;
-    --chart-2: 160 40% 35%;
-    --chart-3: 80 50% 50%;
+    --chart-1: 185 80% 45%;
+    --chart-2: 200 60% 35%;
+    --chart-3: 165 70% 45%;
     --chart-4: 45 100% 50%;
     --chart-5: 320 100% 60%;
 
-    --sidebar: 0 0% 8%;
+    --sidebar: 210 45% 8%;
 
     --font-sans: 'Work Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
     --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
@@ -70,10 +70,10 @@
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.3), 0 8px 10px -1px hsl(0 0% 0% / 0.2);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.4);
 
-    /* Neon glow effects */
-    --neon-primary: 0 0 20px hsl(140 60% 50% / 0.5), 0 0 40px hsl(140 60% 50% / 0.3);
-    --neon-secondary: 0 0 20px hsl(160 40% 35% / 0.5), 0 0 40px hsl(160 40% 35% / 0.3);
-    --neon-accent: 0 0 20px hsl(80 50% 50% / 0.5), 0 0 40px hsl(80 50% 50% / 0.3);
+    /* Ocean glow effects */
+    --neon-primary: 0 0 20px hsl(185 80% 45% / 0.5), 0 0 40px hsl(185 80% 45% / 0.3);
+    --neon-secondary: 0 0 20px hsl(200 60% 35% / 0.5), 0 0 40px hsl(200 60% 35% / 0.3);
+    --neon-accent: 0 0 20px hsl(165 70% 45% / 0.5), 0 0 40px hsl(165 70% 45% / 0.3);
 
     --tracking-normal: 0em;
     --spacing: 0.25rem;
