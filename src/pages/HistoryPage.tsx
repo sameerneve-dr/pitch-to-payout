@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useBilling } from '@/hooks/useBilling';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, ArrowRight, Loader2, Calendar, DollarSign } from 'lucide-react';
 
@@ -28,17 +29,30 @@ const HistoryPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const { isActive, loading: billingLoading } = useBilling();
 
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // No auth redirect - useAuth handles anonymous sign-in automatically
+  // Redirect if not authenticated or not subscribed
+  useEffect(() => {
+    if (authLoading || billingLoading) return;
+
+    if (!user || user.is_anonymous) {
+      navigate('/login');
+      return;
+    }
+
+    if (!isActive) {
+      navigate('/pricing');
+    }
+  }, [user, authLoading, isActive, billingLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && isActive) {
       fetchPitches();
     }
-  }, [user]);
+  }, [user, isActive]);
 
   const fetchPitches = async () => {
     try {
@@ -107,9 +121,9 @@ const HistoryPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+        <Link to="/app" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
+          Back to Dashboard
         </Link>
 
         <div className="flex items-center justify-between mb-8">
@@ -118,7 +132,7 @@ const HistoryPage = () => {
             <p className="text-muted-foreground">Track your investor panels and deals</p>
           </div>
           <Link to="/new">
-            <Button>New Pitch</Button>
+            <Button className="shadow-[var(--neon-primary)]">New Pitch</Button>
           </Link>
         </div>
 

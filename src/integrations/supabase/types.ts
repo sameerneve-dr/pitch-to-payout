@@ -249,7 +249,7 @@ export type Database = {
     }
     Enums: {
       deal_status: "draft" | "accepted" | "declined" | "paid"
-      stage: "MVP" | "Pre-seed" | "Seed" | "Growth"
+      stage: "Pre-Seed" | "Seed" | "Series A" | "Series B" | "Series C"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -378,7 +378,7 @@ export const Constants = {
   public: {
     Enums: {
       deal_status: ["draft", "accepted", "declined", "paid"],
-      stage: ["MVP", "Pre-seed", "Seed", "Growth"],
+      stage: ["Pre-Seed", "Seed", "Series A", "Series B", "Series C"],
     },
   },
 } as const

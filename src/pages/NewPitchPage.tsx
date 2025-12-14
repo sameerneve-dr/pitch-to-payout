@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useBilling } from '@/hooks/useBilling';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -19,6 +20,7 @@ const NewPitchPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, session, loading: authLoading } = useAuth();
+  const { isActive, loading: billingLoading } = useBilling();
 
   const [rawPitch, setRawPitch] = useState('');
   const [startupName, setStartupName] = useState('');
@@ -28,13 +30,25 @@ const NewPitchPage = () => {
   const [equityPercent, setEquityPercent] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  // No auth redirect - useAuth handles anonymous sign-in automatically
+  // Redirect if not authenticated or not subscribed
+  useEffect(() => {
+    if (authLoading || billingLoading) return;
+
+    if (!user || user.is_anonymous) {
+      navigate('/login');
+      return;
+    }
+
+    if (!isActive) {
+      navigate('/pricing');
+    }
+  }, [user, authLoading, isActive, billingLoading, navigate]);
 
   useEffect(() => {
     if (searchParams.get('sample') === 'true') {
       setRawPitch(SAMPLE_PITCH);
       setStartupName('InvoiceAI');
-      setStage('Pre-seed');
+      setStage('Pre-Seed');
       setArr('50000');
       setAskAmount('100000');
       setEquityPercent('10');
@@ -131,12 +145,16 @@ const NewPitchPage = () => {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || billingLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!user || !isActive) {
+    return null;
   }
 
   return (
@@ -193,10 +211,11 @@ const NewPitchPage = () => {
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MVP">MVP</SelectItem>
-                    <SelectItem value="Pre-seed">Pre-seed</SelectItem>
+                    <SelectItem value="Pre-Seed">Pre-Seed</SelectItem>
                     <SelectItem value="Seed">Seed</SelectItem>
-                    <SelectItem value="Growth">Growth</SelectItem>
+                    <SelectItem value="Series A">Series A</SelectItem>
+                    <SelectItem value="Series B">Series B</SelectItem>
+                    <SelectItem value="Series C">Series C</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

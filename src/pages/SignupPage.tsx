@@ -1,105 +1,145 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Zap, Loader2, ArrowLeft } from 'lucide-react';
+import { z } from 'zod';
+
+const signupSchema = z.object({
+  email: z.string().trim().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async (e: React.FormEvent) => {
+  // Redirect if already logged in with a real account
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user && !user.is_anonymous) {
+      navigate('/pricing');
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+
+    const validation = signupSchema.safeParse({ email, password });
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/pricing`
-        }
-      });
+      const { data, error } = await signUp(email, password);
 
       if (error) {
-        toast.error(error.message);
+        if (error.message.includes('already registered')) {
+          toast.error('This email is already registered. Please log in instead.');
+        } else {
+          toast.error(error.message);
+        }
         return;
       }
 
       if (data.user) {
-        toast.success('Account created! Redirecting...');
+        toast.success('Account created successfully!');
         navigate('/pricing');
       }
-    } catch (err) {
+    } catch (error) {
       toast.error('Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Get started with Investor Panel</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+      <div className="w-full max-w-md">
+        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Home
+        </Link>
+
+        <Card className="border-border">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center shadow-[var(--neon-primary)]">
+                <Zap className="w-7 h-7 text-primary-foreground" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Min 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
+            <CardTitle className="text-2xl">Create Account</CardTitle>
+            <CardDescription>
+              Sign up to start pitching to AI investors
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 6 characters
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  'Sign Up'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:underline">
+                Log in
+              </Link>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                'Create account'
-              )}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              Log in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

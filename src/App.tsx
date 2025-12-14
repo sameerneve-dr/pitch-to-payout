@@ -4,9 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import AuthPage from "./pages/AuthPage";
 import SignupPage from "./pages/SignupPage";
 import LoginPage from "./pages/LoginPage";
+import AppPage from "./pages/AppPage";
 import NewPitchPage from "./pages/NewPitchPage";
 import PanelPage from "./pages/PanelPage";
 import DealPage from "./pages/DealPage";
@@ -15,10 +15,6 @@ import SubscriptionSuccessPage from "./pages/SubscriptionSuccessPage";
 import HistoryPage from "./pages/HistoryPage";
 import BillingPage from "./pages/BillingPage";
 import PricingPage from "./pages/PricingPage";
-import BillingSuccessPage from "./pages/BillingSuccessPage";
-import BillingCancelPage from "./pages/BillingCancelPage";
-import SeedPage from "./pages/SeedPage";
-import DemoPage from "./pages/DemoPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -31,23 +27,23 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<AuthPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+          
+          {/* Protected routes (require active subscription) */}
+          <Route path="/app" element={<AppPage />} />
           <Route path="/new" element={<NewPitchPage />} />
           <Route path="/panel/:panelId" element={<PanelPage />} />
           <Route path="/deal/:dealId" element={<DealPage />} />
           <Route path="/success" element={<SuccessPage />} />
-          <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/billing" element={<BillingPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/billing/success" element={<BillingSuccessPage />} />
-          <Route path="/billing/cancel" element={<BillingCancelPage />} />
-          <Route path="/seed" element={<SeedPage />} />
-          <Route path="/demo" element={<DemoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
