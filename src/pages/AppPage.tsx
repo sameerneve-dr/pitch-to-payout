@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useBilling } from '@/hooks/useBilling';
+import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import { 
   Zap, 
@@ -12,14 +13,21 @@ import {
   LogOut,
   Loader2,
   Crown,
+  TrendingUp,
+  Target,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AppPage = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isActive, plan, loading: billingLoading } = useBilling();
+  const { profile, getPlanLimits } = useProfile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const limits = getPlanLimits();
+  const userName = user?.user_metadata?.name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Founder';
 
   // Show welcome toast for subscription success
   useEffect(() => {
@@ -102,29 +110,107 @@ const AppPage = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Welcome Back
-          </h1>
-          <p className="text-muted-foreground mb-8">
-            Ready to pitch to your AI investor panel?
-          </p>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Welcome back, {userName}!
+            </h1>
+            <p className="text-muted-foreground">
+              Ready to pitch to your AI investor panel?
+            </p>
+          </div>
 
-          <Link to="/new">
-            <Button size="lg" className="shadow-[var(--neon-primary)]">
-              <Plus className="w-5 h-5 mr-2" />
-              Create New Pitch
-            </Button>
-          </Link>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Pitches Today
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {profile?.panels_today ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {limits.maxPanelsPerDay === Infinity ? '∞' : limits.maxPanelsPerDay}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
 
-          <div className="mt-12 grid gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Deals Today
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {profile?.deals_today ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {limits.maxDealsPerDay === Infinity ? '∞' : limits.maxDealsPerDay}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  Current Plan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold capitalize">{plan}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Action Button */}
+          <div className="text-center mb-10">
+            <Link to="/new">
+              <Button size="lg" className="shadow-[var(--neon-primary)]">
+                <Plus className="w-5 h-5 mr-2" />
+                Create New Pitch
+              </Button>
+            </Link>
+          </div>
+
+          {/* Quick Links */}
+          <div className="grid gap-4 md:grid-cols-2">
             <Link to="/history">
-              <div className="bg-card rounded-xl p-6 border border-border hover:border-primary/50 transition-colors text-left">
-                <h3 className="text-lg font-semibold text-card-foreground mb-2">View Past Pitches</h3>
-                <p className="text-muted-foreground text-sm">
-                  Review your previous investor panels and deals.
-                </p>
-              </div>
+              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5" />
+                    View Past Pitches
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm">
+                    Review your previous investor panels and deals.
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/settings">
+              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Account Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm">
+                    Manage your subscription and preferences.
+                  </p>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
