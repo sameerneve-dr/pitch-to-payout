@@ -17,18 +17,14 @@ const Index = () => {
   const { isActive, loading: billingLoading } = useBilling();
   const navigate = useNavigate();
 
-  // Redirect logic based on auth and subscription state
+  // Redirect logged-in users to dashboard
   useEffect(() => {
     if (authLoading || billingLoading) return;
 
     if (user && !user.is_anonymous) {
-      if (isActive) {
-        navigate('/app');
-      } else {
-        navigate('/pricing');
-      }
+      navigate('/app');
     }
-  }, [user, authLoading, isActive, billingLoading, navigate]);
+  }, [user, authLoading, billingLoading, navigate]);
 
   // Show loading while checking auth/billing
   if (authLoading || (user && billingLoading)) {
