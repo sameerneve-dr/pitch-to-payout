@@ -109,8 +109,9 @@ serve(async (req) => {
 
     if (customerResponse.status === 200 || customerResponse.status === 201) {
       const customerData = JSON.parse(customerText);
-      customerId = customerData?.customer?.id;
-      console.log('Customer created, id:', customerId);
+      const createdCustomer = customerData?.data?.customer || customerData?.customer;
+      customerId = createdCustomer?.id;
+      console.log('Customer created, id present:', !!customerId);
     } else if (customerResponse.status === 409) {
       // Customer already exists
       console.log('Customer exists, fetching...');
@@ -123,11 +124,14 @@ serve(async (req) => {
       
       if (getResponse.ok) {
         const getData = await getResponse.json();
-        customerId = getData?.customers?.[0]?.id || getData?.data?.[0]?.id;
-        console.log('Fetched customer id:', customerId);
+        const firstCustomer = getData?.data?.[0] || getData?.customer || getData?.customers?.[0];
+        customerId = firstCustomer?.id;
+        console.log('Fetched customer id present:', !!customerId);
+      } else {
+        console.error('Failed to fetch existing customer, status:', getResponse.status);
       }
     } else {
-      console.error('Customer creation failed:', customerText);
+      console.error('Customer creation failed with status:', customerResponse.status);
     }
 
     if (!customerId) {
