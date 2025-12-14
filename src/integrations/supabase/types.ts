@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      investors: {
+        Row: {
+          companies_invested: string | null
+          created_at: string | null
+          id: string
+          investment_thesis: string | null
+          investor_id: string | null
+          investor_type: string | null
+          job_title: string | null
+          name: string
+          risk_tolerance: string | null
+        }
+        Insert: {
+          companies_invested?: string | null
+          created_at?: string | null
+          id?: string
+          investment_thesis?: string | null
+          investor_id?: string | null
+          investor_type?: string | null
+          job_title?: string | null
+          name: string
+          risk_tolerance?: string | null
+        }
+        Update: {
+          companies_invested?: string | null
+          created_at?: string | null
+          id?: string
+          investment_thesis?: string | null
+          investor_id?: string | null
+          investor_type?: string | null
+          job_title?: string | null
+          name?: string
+          risk_tolerance?: string | null
+        }
+        Relationships: []
+      }
       panels: {
         Row: {
           created_at: string
@@ -126,6 +162,45 @@ export type Database = {
           stage?: Database["public"]["Enums"]["stage"] | null
           startup_name?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      startup_pitches: {
+        Row: {
+          arr: number | null
+          ask_amount: number
+          created_at: string | null
+          equity_percent: number
+          id: string
+          mrr: number | null
+          pitch_text: string
+          stage: string
+          startup_id: string | null
+          startup_name: string
+        }
+        Insert: {
+          arr?: number | null
+          ask_amount: number
+          created_at?: string | null
+          equity_percent: number
+          id?: string
+          mrr?: number | null
+          pitch_text: string
+          stage: string
+          startup_id?: string | null
+          startup_name: string
+        }
+        Update: {
+          arr?: number | null
+          ask_amount?: number
+          created_at?: string | null
+          equity_percent?: number
+          id?: string
+          mrr?: number | null
+          pitch_text?: string
+          stage?: string
+          startup_id?: string | null
+          startup_name?: string
         }
         Relationships: []
       }

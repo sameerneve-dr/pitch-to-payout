@@ -28,14 +28,21 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { pitchId, rawPitch, askAmount, equityPercent, startupName, stage, arr } = await req.json();
+    const { pitchId, rawPitch, askAmount, equityPercent, startupName, stage, arr, demoInvestors } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
+    // Build investor context if demo investors provided
+    const investorContext = demoInvestors && demoInvestors.length > 0
+      ? `\n\nUse these REAL investors for the panel (use their exact names and roles, but generate appropriate questions and offers based on their thesis and risk appetite):\n${demoInvestors.map((inv: any) => `- ${inv.name} (${inv.role}): Thesis: "${inv.thesis}", Risk: ${inv.riskAppetite}`).join('\n')}`
+      : '';
+
+    const personaCount = demoInvestors?.length || 4;
+
     const systemPrompt = `You are an AI that generates investor personas for a Shark Tank-style funding panel.
 
-Given a startup pitch, generate exactly 4 investor personas. Each persona should have:
+Given a startup pitch, generate exactly ${personaCount} investor personas. Each persona should have:
 - name: A realistic investor name
 - role: One of "Angel Investor", "VC Partner", "CEO-Operator", "Shark"
 - thesis: A one-liner investment thesis (what they look for)
@@ -70,7 +77,7 @@ Stage: ${stage || 'Unknown'}
 ARR: $${arr || 0}
 Asking: $${askAmount} for ${equityPercent}% equity
 
-Pitch: "${rawPitch}"`;
+Pitch: "${rawPitch}"${investorContext}`;
 
     console.log('Generating panel for pitch:', pitchId);
 

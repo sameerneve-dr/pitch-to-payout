@@ -14,6 +14,8 @@ import BillingPage from "./pages/BillingPage";
 import PricingPage from "./pages/PricingPage";
 import BillingSuccessPage from "./pages/BillingSuccessPage";
 import BillingCancelPage from "./pages/BillingCancelPage";
+import SeedPage from "./pages/SeedPage";
+import DemoPage from "./pages/DemoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,8 @@ const App = () => (
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/billing/success" element={<BillingSuccessPage />} />
           <Route path="/billing/cancel" element={<BillingCancelPage />} />
+          <Route path="/seed" element={<SeedPage />} />
+          <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
