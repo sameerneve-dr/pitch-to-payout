@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import Confetti from '@/components/Confetti';
 import { Check, DollarSign, ArrowRight, Sparkles } from 'lucide-react';
 
 interface DealTerms {
@@ -28,6 +29,7 @@ const SuccessPage = () => {
   const [searchParams] = useSearchParams();
   const dealId = searchParams.get('deal_id');
   const [deal, setDeal] = useState<Deal | null>(null);
+  const [showConfetti, setShowConfetti] = useState(true);
 
   useEffect(() => {
     if (dealId) {
@@ -78,7 +80,8 @@ const SuccessPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full text-center">
+      <Confetti active={showConfetti} />
+      <Card className="max-w-lg w-full text-center animate-scale-in">
         <CardHeader className="pb-4">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
             <Check className="w-10 h-10 text-primary" />
