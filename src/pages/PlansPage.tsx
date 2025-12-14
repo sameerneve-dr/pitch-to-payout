@@ -38,26 +38,20 @@ const PlansPage = () => {
         return;
       }
 
-      const response = await supabase.functions.invoke('create-subscription-checkout', {
-        body: { plan },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      // Demo mode: activate plan directly and go to dashboard
+      await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          plan: plan,
+          plan_status: 'active',
+        }, { onConflict: 'user_id' });
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      const { checkout_url } = response.data;
-      if (checkout_url) {
-        window.location.href = checkout_url;
-      } else {
-        throw new Error('No checkout URL received');
-      }
+      toast.success(`${plan.charAt(0).toUpperCase() + plan.slice(1)} plan activated!`);
+      navigate('/app');
     } catch (error) {
       console.error('Subscription error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to start checkout');
+      toast.error(error instanceof Error ? error.message : 'Failed to activate plan');
     } finally {
       setSubscribing(null);
     }

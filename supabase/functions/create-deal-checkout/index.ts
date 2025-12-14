@@ -84,11 +84,15 @@ serve(async (req) => {
     console.log('Using priceSlug:', priceSlug);
     console.log('APP_DOMAIN:', appDomain);
 
-    const successUrl = `${appDomain}/checkout/return?source=deal&id=${dealId}&status=success`;
-    const cancelUrl = `${appDomain}/checkout/return?source=deal&id=${dealId}&status=cancel`;
+    // Simple absolute URLs
+    const successUrl = `${appDomain}/success?source=deal&deal_id=${dealId}`;
+    const cancelUrl = `${appDomain}/plans`;
 
-    console.log('Success URL:', successUrl);
-    console.log('Cancel URL:', cancelUrl);
+    console.log('=== FLOWGLAD URLs ===');
+    console.log('APP_DOMAIN:', appDomain);
+    console.log('SUCCESS_URL:', successUrl);
+    console.log('CANCEL_URL:', cancelUrl);
+    console.log('=====================');
 
     // Create checkout session using customerExternalId and priceSlug per Flowglad docs
     const checkoutPayload = {
