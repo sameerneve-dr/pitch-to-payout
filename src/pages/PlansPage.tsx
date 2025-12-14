@@ -196,6 +196,20 @@ const PlansPage = () => {
           Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
         </p>
 
+        {/* Demo skip button for testing */}
+        <div className="text-center mt-8 pt-8 border-t border-border">
+          <p className="text-muted-foreground text-sm mb-4">
+            For demo purposes only:
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/app')}
+            className="text-muted-foreground"
+          >
+            Skip to Dashboard (Demo)
+          </Button>
+        </div>
+
         {!user && (
           <p className="text-center text-muted-foreground mt-4">
             Already have an account?{' '}
