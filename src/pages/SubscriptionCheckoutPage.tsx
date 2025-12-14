@@ -292,7 +292,7 @@ const SubscriptionCheckoutPage = () => {
                     toast.success('Demo payment successful!');
                     navigate('/app');
                   }}
-                  className="text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
+                  className="text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 animate-pulse"
                 >
                   Skip Payment → Dashboard
                 </Button>
