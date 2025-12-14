@@ -54,8 +54,8 @@ serve(async (req) => {
       );
     }
 
-    // Use priceSlug instead of priceId (matching deal checkout pattern)
-    const priceSlug = plan === "plus" ? "sharkbank_plus" : "sharkbank_pro";
+    // Use the investor_demo_pro price slug for subscriptions
+    const priceSlug = "investor_demo_pro";
 
     const isTestKey = flowgladSecretKey.toLowerCase().includes("test");
     const environment = isTestKey ? "test" : "live";
