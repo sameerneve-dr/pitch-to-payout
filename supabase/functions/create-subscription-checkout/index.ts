@@ -149,6 +149,8 @@ serve(async (req) => {
       }
     };
 
+    console.log("Checkout payload:", JSON.stringify(checkoutPayload));
+
     const checkoutResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
       method: "POST",
       headers: {
