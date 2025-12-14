@@ -43,14 +43,39 @@ serve(async (req) => {
       );
     }
 
-    // Use price slugs instead of price IDs
-    const priceSlug = plan === "plus" ? "investor_demo_plus" : "investor_demo_pro";
-
+    // Use TEST price IDs from environment
+    const flowgladPriceIdPlus = Deno.env.get("FLOWGLAD_PRICE_ID_PLUS");
+    const flowgladPriceIdPro = Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
     const flowgladSecretKey = Deno.env.get("FLOWGLAD_SECRET_KEY");
+
     if (!flowgladSecretKey) {
       console.error("Missing FLOWGLAD_SECRET_KEY");
       return new Response(
         JSON.stringify({ error: "Payment configuration missing" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!flowgladPriceIdPlus || !flowgladPriceIdPro) {
+      console.error("Missing FLOWGLAD_PRICE_ID_PLUS or FLOWGLAD_PRICE_ID_PRO");
+      return new Response(
+        JSON.stringify({ error: "Payment price configuration missing" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const priceId = plan === "plus" ? flowgladPriceIdPlus : flowgladPriceIdPro;
+
+    const isTestKey = flowgladSecretKey.toLowerCase().includes("test");
+    const environment = isTestKey ? "test" : "live";
+
+    console.log("Flowglad environment:", environment);
+    console.log("Selected Flowglad priceId:", priceId);
+
+    if (!isTestKey) {
+      console.error("Flowglad secret key does not appear to be a TEST key. Aborting checkout.");
+      return new Response(
+        JSON.stringify({ error: "Payment system is configured for LIVE mode. This demo only supports TEST mode." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -68,7 +93,7 @@ serve(async (req) => {
     const customerExternalId = user.id;
 
     console.log("Creating subscription for plan:", plan);
-    console.log("Using priceSlug:", priceSlug);
+    console.log("Using priceId:", priceId);
     console.log("Customer externalId:", customerExternalId);
     console.log("APP_DOMAIN:", appDomain);
 
@@ -85,7 +110,7 @@ serve(async (req) => {
     const checkoutPayload = {
       checkoutSession: {
         customerExternalId,
-        priceSlug,
+        priceId,
         successUrl,
         cancelUrl,
         type: "product",

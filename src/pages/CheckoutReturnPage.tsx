@@ -11,6 +11,7 @@ const CheckoutReturnPage = () => {
 
   const source = searchParams.get('source');
   const id = searchParams.get('id');
+  const dealId = searchParams.get('dealId');
   const status = searchParams.get('status');
   const plan = searchParams.get('plan');
 
@@ -29,8 +30,9 @@ const CheckoutReturnPage = () => {
     if (status === 'cancel') {
       if (source === 'subscription') {
         navigate('/plans');
-      } else if (source === 'deal' && id) {
-        navigate(`/deal/${id}`);
+      } else if (source === 'deal' && (dealId || id)) {
+        const finalId = dealId || id;
+        navigate(`/deal/${finalId}`);
       } else {
         navigate('/app');
       }
@@ -51,11 +53,12 @@ const CheckoutReturnPage = () => {
               updated_at: new Date().toISOString(),
             }, { onConflict: 'user_id' });
         }
-      } else if (source === 'deal' && id) {
+      } else if (source === 'deal' && (dealId || id)) {
+        const finalId = dealId || id;
         await supabase
           .from('deals')
           .update({ status: 'paid' })
-          .eq('id', id);
+          .eq('id', finalId);
       }
     } catch (err) {
       console.error('Error updating status:', err);
