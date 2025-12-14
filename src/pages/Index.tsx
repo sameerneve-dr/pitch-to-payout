@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   Zap, 
@@ -7,7 +8,8 @@ import {
   DollarSign, 
   ArrowRight,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 
 const Index = () => {
@@ -15,11 +17,8 @@ const Index = () => {
   const navigate = useNavigate();
 
   const handleStartPanel = () => {
-    if (user) {
-      navigate('/new');
-    } else {
-      navigate('/auth');
-    }
+    // Always navigate - useAuth handles anonymous sign-in automatically
+    navigate('/new');
   };
 
   return (
@@ -34,33 +33,23 @@ const Index = () => {
             <span className="text-xl font-bold text-foreground">Investor Panel</span>
           </div>
           <nav className="flex items-center gap-4">
-            {!loading && (
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Demo Mode – No Login Required
+            </Badge>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
               <>
-                {user ? (
-                  <>
-                    <Link to="/demo">
-                      <Button variant="ghost" size="sm">Demo</Button>
-                    </Link>
-                    <Link to="/history">
-                      <Button variant="ghost" size="sm">History</Button>
-                    </Link>
-                    <Link to="/billing">
-                      <Button variant="ghost" size="sm">Billing</Button>
-                    </Link>
-                    <Link to="/new">
-                      <Button size="sm">New Pitch</Button>
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/demo">
-                      <Button variant="ghost" size="sm">Demo</Button>
-                    </Link>
-                    <Link to="/auth">
-                      <Button size="sm">Sign In</Button>
-                    </Link>
-                  </>
-                )}
+                <Link to="/demo">
+                  <Button variant="ghost" size="sm">Demo</Button>
+                </Link>
+                <Link to="/history">
+                  <Button variant="ghost" size="sm">History</Button>
+                </Link>
+                <Link to="/new">
+                  <Button size="sm">New Pitch</Button>
+                </Link>
               </>
             )}
           </nav>
