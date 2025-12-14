@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SignupPage from "./pages/SignupPage";
 import LoginPage from "./pages/LoginPage";
+import PlansPage from "./pages/PlansPage";
 import AppPage from "./pages/AppPage";
 import NewPitchPage from "./pages/NewPitchPage";
 import PanelPage from "./pages/PanelPage";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/plans" element={<PlansPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
           

@@ -43,17 +43,15 @@ serve(async (req) => {
       );
     }
 
-    const envPriceSlug = plan === "plus" 
+    // Get price IDs from environment - these should be set in Supabase secrets
+    const priceId = plan === "plus" 
       ? Deno.env.get("FLOWGLAD_PRICE_ID_PLUS")
       : Deno.env.get("FLOWGLAD_PRICE_ID_PRO");
 
-    const defaultPriceSlug = plan === "plus" ? "investor_demo_plus" : "investor_demo_pro";
-    const priceSlug = envPriceSlug || defaultPriceSlug;
-
-    if (!priceSlug) {
-      console.error("Missing price slug for plan:", plan);
+    if (!priceId) {
+      console.error("Missing price ID for plan:", plan);
       return new Response(
-        JSON.stringify({ error: "Price configuration missing" }),
+        JSON.stringify({ error: `Price not configured for ${plan} plan. Please set FLOWGLAD_PRICE_ID_${plan.toUpperCase()} secret.` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -69,24 +67,16 @@ serve(async (req) => {
 
     const origin = Deno.env.get("APP_DOMAIN") || req.headers.get("origin") || "https://investor-panel.lovable.app";
 
-    // Build customer data - handle anonymous/demo users
-    const externalId = user.id || "demo-user";
+    // Build customer data - handle users without email
+    const externalId = user.id;
     const email = user.email || "demo@investorpanel.test";
-    const name = user.email?.split('@')[0] || "Demo User";
-
-    if (!externalId) {
-      return new Response(
-        JSON.stringify({ error: "Unable to determine user identity" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "User";
 
     console.log("Creating subscription for plan:", plan);
-    console.log("Using priceSlug:", priceSlug);
-    console.log("Customer externalId exists:", !!externalId);
-    console.log("Customer email exists:", !!email);
+    console.log("Using priceId:", priceId);
+    console.log("Customer externalId:", externalId);
 
-    // Step 1: Ensure customer exists in Flowglad (correct shape with "customer" wrapper)
+    // Step 1: Ensure customer exists in Flowglad
     console.log("Ensuring Flowglad customer exists...");
     
     const customerPayload = {
@@ -96,12 +86,6 @@ serve(async (req) => {
         name,
       }
     };
-
-    console.log("Customer payload shape:", JSON.stringify({ 
-      hasCustomer: !!customerPayload.customer,
-      hasExternalId: !!customerPayload.customer.externalId,
-      hasEmail: !!customerPayload.customer.email
-    }));
 
     const customerResponse = await fetch("https://app.flowglad.com/api/v1/customers", {
       method: "POST",
@@ -117,40 +101,32 @@ serve(async (req) => {
 
     let customerId: string | undefined;
 
-    if (customerResponse.status === 409 || customerResponse.status === 200 || customerResponse.status === 201) {
-      // Customer exists or was created
-      try {
-        const customerData = JSON.parse(customerText);
-        customerId = customerData?.customer?.id;
-        console.log("Customer ensured, id exists:", !!customerId);
-      } catch (e) {
-        console.log("Parsing customer response, trying to fetch by externalId");
-      }
-    }
-
-    // If we don't have customerId yet, try to fetch by externalId
-    if (!customerId) {
-      console.log("Fetching customer by externalId...");
-      const getCustomerResponse = await fetch(`https://app.flowglad.com/api/v1/customers?externalId=${encodeURIComponent(externalId)}`, {
-        method: "GET",
+    // Handle various response codes
+    if (customerResponse.status === 200 || customerResponse.status === 201) {
+      const customerData = JSON.parse(customerText);
+      customerId = customerData?.customer?.id;
+      console.log("Customer created, id:", customerId);
+    } else if (customerResponse.status === 409) {
+      // Customer already exists, fetch it
+      console.log("Customer already exists, fetching...");
+      const getResponse = await fetch(`https://app.flowglad.com/api/v1/customers?externalId=${encodeURIComponent(externalId)}`, {
         headers: {
           "Authorization": `Bearer ${flowgladSecretKey}`,
           "Content-Type": "application/json",
         },
       });
       
-      if (getCustomerResponse.ok) {
-        const getCustomerData = await getCustomerResponse.json();
-        customerId = getCustomerData?.customers?.[0]?.id || getCustomerData?.customer?.id || getCustomerData?.data?.[0]?.id;
-        console.log("Fetched customer, id exists:", !!customerId);
-      } else {
-        const errorText = await getCustomerResponse.text();
-        console.error("Failed to fetch customer:", errorText);
+      if (getResponse.ok) {
+        const getData = await getResponse.json();
+        customerId = getData?.customers?.[0]?.id || getData?.data?.[0]?.id;
+        console.log("Fetched existing customer id:", customerId);
       }
+    } else {
+      console.error("Customer creation failed:", customerText);
     }
 
     if (!customerId) {
-      console.error("Could not obtain customer ID after creation attempt");
+      console.error("Could not obtain customer ID");
       return new Response(
         JSON.stringify({ error: "Failed to create payment customer" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -159,20 +135,18 @@ serve(async (req) => {
 
     // Step 2: Create checkout session
     const successUrl = `${origin}/subscription/success?plan=${plan}`;
-    const cancelUrl = `${origin}/pricing`;
+    const cancelUrl = `${origin}/plans`;
 
     console.log("Creating checkout session...");
 
     const checkoutPayload = {
-      customerId,
-      priceId: priceSlug,
-      successUrl,
-      cancelUrl,
-      type: "subscription",
-      metadata: {
-        user_id: user.id,
-        plan,
-      },
+      checkoutSession: {
+        customerId,
+        priceId,
+        successUrl,
+        cancelUrl,
+        type: "subscription",
+      }
     };
 
     const checkoutResponse = await fetch("https://app.flowglad.com/api/v1/checkout-sessions", {
@@ -186,6 +160,7 @@ serve(async (req) => {
 
     const checkoutText = await checkoutResponse.text();
     console.log("Checkout session status:", checkoutResponse.status);
+    console.log("Checkout response:", checkoutText);
 
     let checkoutData;
     try {
@@ -199,9 +174,9 @@ serve(async (req) => {
     }
 
     if (!checkoutResponse.ok) {
-      console.error("Checkout API error:", JSON.stringify(checkoutData));
+      console.error("Checkout API error:", checkoutData);
       return new Response(
-        JSON.stringify({ error: `Checkout failed: ${checkoutData?.error || 'Unknown error'}` }),
+        JSON.stringify({ error: `Checkout failed: ${checkoutData?.error || JSON.stringify(checkoutData)}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -209,7 +184,7 @@ serve(async (req) => {
     const checkoutUrl = checkoutData?.checkoutSession?.url || checkoutData?.url;
 
     if (!checkoutUrl) {
-      console.error("No checkout URL in response");
+      console.error("No checkout URL in response:", checkoutData);
       return new Response(
         JSON.stringify({ error: "No checkout URL returned" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

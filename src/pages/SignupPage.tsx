@@ -10,6 +10,7 @@ import { Zap, Loader2, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 
 const signupSchema = z.object({
+  name: z.string().trim().min(1, { message: "Name is required" }).max(100),
   email: z.string().trim().email({ message: "Invalid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
@@ -17,6 +18,7 @@ const signupSchema = z.object({
 const SignupPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signUp } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,14 +28,14 @@ const SignupPage = () => {
     if (authLoading) return;
 
     if (user && !user.is_anonymous) {
-      navigate('/pricing');
+      navigate('/plans');
     }
   }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validation = signupSchema.safeParse({ email, password });
+    const validation = signupSchema.safeParse({ name, email, password });
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
       return;
@@ -42,7 +44,7 @@ const SignupPage = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await signUp(email, password);
+      const { data, error } = await signUp(email, password, { data: { full_name: name } });
 
       if (error) {
         if (error.message.includes('already registered')) {
@@ -55,7 +57,7 @@ const SignupPage = () => {
 
       if (data.user) {
         toast.success('Account created successfully!');
-        navigate('/pricing');
+        navigate('/plans');
       }
     } catch (error) {
       toast.error('Something went wrong');
@@ -94,6 +96,17 @@ const SignupPage = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
