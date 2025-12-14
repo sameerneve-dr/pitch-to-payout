@@ -65,74 +65,79 @@ serve(async (req) => {
     const FLOWGLAD_SECRET_KEY = Deno.env.get('FLOWGLAD_SECRET_KEY');
     const FLOWGLAD_PRICE_ID = Deno.env.get('FLOWGLAD_PRICE_ID');
 
-    // If Flowglad is configured, create a real checkout session
-    if (FLOWGLAD_SECRET_KEY && FLOWGLAD_PRICE_ID) {
-      try {
-        // Create Flowglad checkout session using the correct API endpoint per docs
-        // https://docs.flowglad.com/api-reference/checkout-sessions/create-checkout-session
-        const flowgladResponse = await fetch('https://app.flowglad.com/api/v1/checkout-sessions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            checkoutSession: {
-              customerExternalId: user.id,
-              priceId: FLOWGLAD_PRICE_ID,
-              successUrl: `${origin}/success?deal_id=${dealId}`,
-              cancelUrl: `${origin}/deal/${dealId}`,
-              type: 'product',
-              outputMetadata: {
-                deal_id: dealId,
-                user_id: user.id,
-                startup_name: deal.panel.pitch.startup_name,
-              },
-            },
-          }),
-        });
-
-        if (flowgladResponse.ok) {
-          const responseData = await flowgladResponse.json();
-          const checkoutUrl = responseData.url;
-
-          // Update deal with checkout URL
-          await supabase
-            .from('deals')
-            .update({ 
-              status: 'accepted',
-              checkout_url: checkoutUrl,
-            })
-            .eq('id', dealId);
-
-          console.log('Flowglad checkout created for deal:', dealId);
-
-          return new Response(JSON.stringify({ url: checkoutUrl }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        } else {
-          const errorText = await flowgladResponse.text();
-          console.error('Flowglad API error:', flowgladResponse.status, errorText);
-          // Fall through to demo mode
-        }
-      } catch (flowgladError) {
-        console.error('Flowglad request failed:', flowgladError);
-        // Fall through to demo mode
-      }
+    // Require Flowglad configuration - no demo mode fallback
+    if (!FLOWGLAD_SECRET_KEY || !FLOWGLAD_PRICE_ID) {
+      console.error('Flowglad not configured. FLOWGLAD_SECRET_KEY:', !!FLOWGLAD_SECRET_KEY, 'FLOWGLAD_PRICE_ID:', !!FLOWGLAD_PRICE_ID);
+      throw new Error('Payment system not configured. Please set FLOWGLAD_SECRET_KEY and FLOWGLAD_PRICE_ID.');
     }
 
-    // Demo mode: Skip actual payment and mark as paid
+    // Get the total investment amount from deal terms
+    const dealTerms = deal.deal_terms as any;
+    const includedAllocations = dealTerms?.allocations?.filter((a: any) => a.isIncluded !== false) || [];
+    const totalAmount = includedAllocations.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
+
+    console.log('Creating Flowglad checkout for deal:', dealId, 'amount:', totalAmount);
+
+    // Create Flowglad checkout session
+    const flowgladResponse = await fetch('https://app.flowglad.com/api/v1/checkout-sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${FLOWGLAD_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkoutSession: {
+          customerExternalId: user.id,
+          priceId: FLOWGLAD_PRICE_ID,
+          successUrl: `${origin}/success?deal_id=${dealId}`,
+          cancelUrl: `${origin}/deal/${dealId}`,
+          type: 'product',
+          outputName: `Investment in ${deal.panel.pitch.startup_name || 'Startup'}`,
+          outputMetadata: {
+            deal_id: dealId,
+            user_id: user.id,
+            startup_name: deal.panel.pitch.startup_name,
+            investment_amount: totalAmount,
+          },
+        },
+      }),
+    });
+
+    const responseText = await flowgladResponse.text();
+    console.log('Flowglad response status:', flowgladResponse.status);
+    console.log('Flowglad response:', responseText);
+
+    if (!flowgladResponse.ok) {
+      console.error('Flowglad API error:', flowgladResponse.status, responseText);
+      throw new Error(`Payment checkout failed: ${responseText}`);
+    }
+
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse Flowglad response:', e);
+      throw new Error('Invalid response from payment system');
+    }
+
+    const checkoutUrl = responseData.url;
+    if (!checkoutUrl) {
+      console.error('No checkout URL in response:', responseData);
+      throw new Error('No checkout URL received from payment system');
+    }
+
+    // Update deal with checkout URL and status
     await supabase
       .from('deals')
-      .update({ status: 'paid' })
+      .update({ 
+        status: 'accepted',
+        checkout_url: checkoutUrl,
+      })
       .eq('id', dealId);
 
-    console.log('Demo mode: Deal accepted and marked as paid:', dealId);
+    console.log('Flowglad checkout created for deal:', dealId, 'URL:', checkoutUrl);
 
-    // Redirect directly to success page
-    const successUrl = `${origin}/success?deal_id=${dealId}`;
-
-    return new Response(JSON.stringify({ url: successUrl }), {
+    return new Response(JSON.stringify({ url: checkoutUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
