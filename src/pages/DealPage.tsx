@@ -242,6 +242,36 @@ const DealPage = () => {
     }
   };
 
+  const handleRenegotiate = async () => {
+    if (!deal || !dealId) return;
+    
+    try {
+      // Reset to initial round so user can negotiate again
+      const updatedTerms = {
+        ...deal.deal_terms,
+        negotiationRound: 'initial',
+      };
+      
+      await supabase
+        .from('deals')
+        .update({ deal_terms: JSON.parse(JSON.stringify(updatedTerms)) })
+        .eq('id', dealId);
+
+      toast({
+        title: 'Ready to Renegotiate',
+        description: 'Adjust your terms and submit a new counter-offer.',
+      });
+
+      await fetchDeal();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reset negotiation',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -438,7 +468,7 @@ const DealPage = () => {
                 {isFinalRound ? (
                   <>
                     <p className="text-center text-muted-foreground text-sm mb-4">
-                      This is the final offer. Accept to proceed to payment.
+                      This is the final offer. Accept to proceed to payment, or renegotiate.
                     </p>
                     <div className="flex flex-col gap-3">
                       <div className="flex gap-3">
@@ -469,6 +499,15 @@ const DealPage = () => {
                           )}
                         </Button>
                       </div>
+                      <Button 
+                        variant="secondary" 
+                        className="w-full"
+                        onClick={handleRenegotiate}
+                        disabled={processing}
+                      >
+                        <Handshake className="w-4 h-4 mr-2" />
+                        Renegotiate Terms
+                      </Button>
                       <p className="text-xs text-muted-foreground text-center">
                         Demo checkout: use card 4242 4242 4242 4242, any expiry, any CVC.
                       </p>
