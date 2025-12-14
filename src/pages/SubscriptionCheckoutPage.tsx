@@ -282,17 +282,19 @@ const SubscriptionCheckoutPage = () => {
               </form>
 
               {/* Demo skip button */}
-              <div className="mt-6 pt-6 border-t border-border text-center">
-                <p className="text-muted-foreground text-sm mb-3">For demo purposes:</p>
+              <div className="mt-6 pt-6 border-t border-dashed border-muted text-center bg-muted/30 -mx-6 -mb-6 px-6 pb-6 rounded-b-lg">
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-3 font-medium">
+                  Demo Mode Only
+                </p>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => {
                     toast.success('Demo payment successful!');
                     navigate('/app');
                   }}
-                  className="text-muted-foreground"
+                  className="text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
                 >
-                  Skip Payment → Go to Dashboard
+                  Skip Payment → Dashboard
                 </Button>
               </div>
             </CardContent>
