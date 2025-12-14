@@ -20,3 +20,9 @@ verify_jwt = true
 
 [functions.create-subscription-checkout]
 verify_jwt = true
+
+[functions.verify-checkout]
+verify_jwt = true
+
+[functions.flowglad-webhook]
+verify_jwt = false
