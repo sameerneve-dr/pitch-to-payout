@@ -84,7 +84,7 @@ serve(async (req) => {
     console.log("APP_DOMAIN:", appDomain);
 
     // Simple absolute URLs
-    const successUrl = `${appDomain}/success?source=subscription&plan=${plan}`;
+    const successUrl = `${appDomain}/app?source=subscription&plan=${plan}`;
     const cancelUrl = `${appDomain}/plans`;
 
     console.log("=== FLOWGLAD URLs ===");
